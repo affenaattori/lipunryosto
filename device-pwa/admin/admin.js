@@ -8,10 +8,10 @@
   // URL param api override
   const params = new URLSearchParams(location.search);
   if (params.get('api')) state.apiBase = params.get('api');
-  $('apiBase').value = state.apiBase;
-  $('apiInfo').textContent = state.apiBase || 'API: –';
+  if ($('apiBase')) $('apiBase').value = state.apiBase;
+  if ($('apiInfo')) $('apiInfo').textContent = state.apiBase || 'API: –';
 
-  $('saveApiBtn').onclick = () => {
+  if ($('saveApiBtn')) $('saveApiBtn').onclick = () => {
     state.apiBase = $('apiBase').value.trim();
     localStorage.setItem('admin_apiBase', state.apiBase);
     $('apiInfo').textContent = state.apiBase || 'API: –';
@@ -20,6 +20,7 @@
   // Team builder
   function renderTeams(){
     const wrap = $('teamsWrap');
+    if (!wrap) return;
     wrap.innerHTML = '';
     if (state.teams.length === 0){
       state.teams.push({ name:'Sininen', color:'#2563eb' }, { name:'Punainen', color:'#ef4444' });
@@ -38,23 +39,23 @@
       wrap.appendChild(row);
     });
   }
-  $('addTeamBtn').onclick = () => { state.teams.push({ name:'', color:'' }); renderTeams(); };
+  if ($('addTeamBtn')) $('addTeamBtn').onclick = () => { state.teams.push({ name:'', color:'' }); renderTeams(); };
   renderTeams();
 
   // Helpers
   function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
   function api(path){ return `${state.apiBase.replace(/\/$/,'')}${path}`; }
-  function setCreateInfo(msg){ $('createInfo').textContent = msg || ''; }
+  function setCreateInfo(msg){ const el=$('createInfo'); if (el) el.textContent = msg || ''; }
 
-  // Create game
-  $('createGameBtn').onclick = async () => {
+  // Create game (patched: optional maxPoints, dto-wrapper fallback)
+  if ($('createGameBtn')) $('createGameBtn').onclick = async () => {
     if (!state.apiBase){ setCreateInfo('Aseta ensin API-osoite.'); return; }
     const name = $('gName').value.trim();
     const capture = parseInt($('gCapture').value||'60',10);
     const win = $('gWin').value;
     const timeEnabled = $('gTimeEnabled').value === 'true';
     const timeLimit = parseInt($('gTimeLimit').value||'0',10);
-    const maxPoints = $('gMaxPoints').value ? parseInt($('gMaxPoints').value,10) : null;
+    const maxPointsInput = $('gMaxPoints').value;
     const arena = $('gArena').value.trim() || null;
 
     if (!name){ setCreateInfo('Anna pelin nimi.'); return; }
@@ -66,24 +67,45 @@
 
     if (cleanTeams.length < 2){ setCreateInfo('Vähintään 2 nimettyä joukkuetta vaaditaan.'); return; }
 
-    const body = {
+    const base = {
       name,
-      captureTimeSeconds: isFinite(capture) ? capture : 60,
-      winCondition: win,                 // "MostPointsAtTime" | "AllFlagsOneTeam"
-      timeLimitMinutes: timeEnabled ? (isFinite(timeLimit)? timeLimit : 30) : null,
-      maxPoints: maxPoints,
+      captureTimeSeconds: Number.isFinite(capture) ? capture : 60,
+      winCondition: win, // "MostPointsAtTime" | "AllFlagsOneTeam"
       arenaName: arena,
-      teams: cleanTeams                  // [{name,color},...]
+      teams: cleanTeams
     };
+    if (timeEnabled && Number.isFinite(timeLimit)) base.timeLimitMinutes = timeLimit;
+    if (maxPointsInput !== '' && !Number.isNaN(parseInt(maxPointsInput,10))) {
+      base.maxPoints = parseInt(maxPointsInput,10);
+    }
+
+    const clean = obj => JSON.parse(JSON.stringify(obj)); // drop undefined
+
+    async function tryCreate(payload) {
+      const r = await fetch(api('/games'), {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(clean(payload))
+      });
+      const txt = await r.text();
+      return { ok: r.ok, status: r.status, text: txt };
+    }
 
     try{
       setCreateInfo('Luodaan peli…');
-      const r = await fetch(api('/games'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-      if (!r.ok) throw new Error(await r.text());
-      const g = await r.json();
+
+      // 1) yritä ilman wrapperia
+      let res = await tryCreate(base);
+
+      // 2) jos 400 ja maininta dto:sta, yritä { dto: base }
+      if (!res.ok && res.status === 400 && /"dto"| dto /i.test(res.text)) {
+        res = await tryCreate({ dto: base });
+      }
+
+      if (!res.ok) throw new Error(res.text || 'Tuntematon virhe');
+
       setCreateInfo('Peli luotu ✓');
       await loadGames();
-      // clear name but keep teams for convenience
       $('gName').value='';
     }catch(e){
       setCreateInfo('Virhe pelin luonnissa: ' + (e?.message||e));
@@ -94,13 +116,14 @@
   async function loadGames(){
     if (!state.apiBase) return;
     const tbody = $('gamesTbody'); const empty = $('gamesEmpty');
-    tbody.innerHTML = ''; empty.style.display = 'block';
+    if (!tbody) return;
+    tbody.innerHTML = ''; if (empty) empty.style.display = 'block';
     try{
       const r = await fetch(api('/games'));
       if (!r.ok) throw new Error(await r.text());
       const list = await r.json();
-      if (!Array.isArray(list) || list.length === 0){ empty.style.display = 'block'; return; }
-      empty.style.display = 'none';
+      if (!Array.isArray(list) || list.length === 0){ if (empty) empty.style.display = 'block'; return; }
+      if (empty) empty.style.display = 'none';
       list.forEach(g => {
         const tr = document.createElement('tr');
         const timeTxt = g.timeLimitMinutes ? `${g.timeLimitMinutes} min` : '—';
@@ -118,7 +141,8 @@
           </td>
         `;
         tr.querySelector('[data-act="flags"]').onclick = () => {
-          const url = `${location.origin}/admin-flags/flags.html?api=${encodeURIComponent(state.apiBase)}&gameId=${g.id}`;
+          const base = location.origin; // same SWA origin
+          const url = `${base}/admin-flags/flags.html?api=${encodeURIComponent(state.apiBase)}&gameId=${g.id}`;
           window.open(url, '_blank');
         };
         tbody.appendChild(tr);
