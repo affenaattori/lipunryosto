@@ -17,7 +17,7 @@ namespace Lipunryosto.Api.Models
         public int? MaxPoints { get; set; }
         public string? ArenaName { get; set; }
 
-        // Peli-tila (ScoringService odottaa tätä)
+        // Peli-tila
         public GameStatus Status { get; set; } = GameStatus.NotStarted;
         public DateTimeOffset? StartedAtUtc { get; set; }
         public DateTimeOffset? EndedAtUtc { get; set; }
@@ -33,7 +33,13 @@ namespace Lipunryosto.Api.Models
         // Navigaatio
         public ICollection<Team> Teams { get; set; } = new List<Team>();
 
-        // Yhteensopivuus: jotkin kontrollerit käyttävät TeamList-nimeä
+        // Liput tähän peliin (olettaen FlagPointissa on GameId FK)
+        public ICollection<FlagPoint> Flags { get; set; } = new List<FlagPoint>();
+
+        // Joissain kontrolleissa käytetty nimi
+        public ICollection<FlagPoint> FlagPoints => Flags;
+
+        // Joissain kontrolleissa käytetty nimi
         public ICollection<Team> TeamList => Teams;
     }
 }
