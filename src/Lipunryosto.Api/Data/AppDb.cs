@@ -11,6 +11,6 @@ namespace Lipunryosto.Api.Data
         public DbSet<Team> Teams => Set<Team>();
         public DbSet<FlagPoint> Flags => Set<FlagPoint>();
         public DbSet<Device> Devices => Set<Device>();
-        public DbSet<GameEvent> Events => Set<GameEvent>();
+        public DbSet<CaptureEvent> Events => Set<CaptureEvent>();
     }
 }
