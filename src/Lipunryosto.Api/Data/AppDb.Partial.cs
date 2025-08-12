@@ -3,12 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Lipunryosto.Api.Data
 {
-    // Tämä on osittaisluokka, joka täydentää olemassa olevaa AppDb:tä.
     public partial class AppDb : DbContext
     {
-        public DbSet<Game> Games => Set<Game>();
-        public DbSet<Team> Teams => Set<Team>();
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
