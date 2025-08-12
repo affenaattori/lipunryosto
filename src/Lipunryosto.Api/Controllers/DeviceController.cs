@@ -34,15 +34,17 @@ public class DeviceController : ControllerBase{
       var start = await _db.Events.Where(x=>x.GameId==g.Id && x.FlagId==f.Id && x.TeamId==dto.TeamId && x.Phase=="start").OrderByDescending(x=>x.Timestamp).FirstOrDefaultAsync();
       if(start is null) return BadRequest("Start not found");
       var elapsed = now - start.Timestamp;
-      if(elapsed.TotalSeconds + _cap.Value.ConfirmGraceSeconds < g.CaptureTimeSeconds) return BadRequest("Confirm too early");
+      if(elapsed.TotalSeconds + 10 < g.CaptureTimeSeconds) return BadRequest("Confirm too early"); // grace 10s default
       if(dto.Lat.HasValue && dto.Lon.HasValue && f.Lat!=0 && f.Lon!=0){
         var dist = GeoHelper.Haversine(f.Lat,f.Lon,dto.Lat.Value,dto.Lon.Value);
-        if(dist > _cap.Value.GeofenceMeters) return BadRequest("Out of geofence");
+        if(dist > 50) return BadRequest("Out of geofence"); // default 50m
       }
       await _scoring.AwardAsync(g.Id, dto.TeamId, f.Points);
-      f.LastCapturedAt = now; await _db.SaveChangesAsync();
-      await _admin.Clients.All.SendAsync("flagUpdated", new { gameId=g.Id, flagId=f.Id, lastCapturedAt=f.LastCapturedAt });
-      await _public.Clients.All.SendAsync("flagUpdated", new { gameId=g.Id, flagId=f.Id, lastCapturedAt=f.LastCapturedAt });
+      f.LastCapturedAt = now;
+      f.OwnerTeamId = dto.TeamId; // set owner
+      await _db.SaveChangesAsync();
+      await _admin.Clients.All.SendAsync("flagUpdated", new { gameId=g.Id, flagId=f.Id, lastCapturedAt=f.LastCapturedAt, ownerTeamId=f.OwnerTeamId });
+      await _public.Clients.All.SendAsync("flagUpdated", new { gameId=g.Id, flagId=f.Id, lastCapturedAt=f.LastCapturedAt, ownerTeamId=f.OwnerTeamId });
     }
     return Ok(ev);
   }

@@ -44,7 +44,7 @@ public class GamesController : ControllerBase {
   [HttpPost("{id:guid}/generate-public-link")]
   public async Task<IActionResult> PublicLink(Guid id){
     var g=await _db.Games.FindAsync(id); if(g is null) return NotFound();
-    g.PublicUrlToken = Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Replace("+","" ).Replace("/","").Replace("=","" ).Substring(0,10);
+    g.PublicUrlToken = Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Replace("+","").Replace("/","").Replace("=","").Substring(0,10);
     await _db.SaveChangesAsync();
     return Ok(new { publicUrl = $"https://peli.example.com/view/{g.PublicUrlToken}" });
   }

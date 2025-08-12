@@ -4,7 +4,6 @@ using Lipunryosto.Api.Hubs;
 using Lipunryosto.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using Microsoft.Extensions.Options;
 using Lipunryosto.Api;
 
 var builder = WebApplication.CreateBuilder(args);

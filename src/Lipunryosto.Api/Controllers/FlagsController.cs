@@ -7,6 +7,14 @@ namespace Lipunryosto.Api.Controllers;
 [Route("[controller]")]
 public class FlagsController : ControllerBase{
   private readonly AppDb _db; public FlagsController(AppDb db){_db=db;}
+
+  [HttpGet("{flagId:guid}")]
+  public async Task<IActionResult> Get(Guid flagId){
+    var f = await _db.Flags.FirstOrDefaultAsync(x=>x.Id==flagId);
+    if (f is null) return NotFound();
+    return Ok(new { f.Id, f.Name, f.Lat, f.Lon, f.Color, f.Points, f.Status, f.OwnerTeamId, f.LastCapturedAt });
+  }
+
   [HttpPatch("{flagId:guid}")]
   public async Task<IActionResult> Patch(Guid flagId,[FromBody] Dictionary<string,object> p){
     var f=await _db.Flags.FirstOrDefaultAsync(x=>x.Id==flagId); if(f is null) return NotFound();
@@ -17,6 +25,7 @@ public class FlagsController : ControllerBase{
         case "Status": f.Status = kv.Value?.ToString() ?? f.Status; break;
         case "Lat": f.Lat = Convert.ToDouble(kv.Value); break;
         case "Lon": f.Lon = Convert.ToDouble(kv.Value); break;
+        case "OwnerTeamId": f.OwnerTeamId = Guid.Parse(kv.Value.ToString()!); break;
       }
     }
     await _db.SaveChangesAsync(); return Ok(f);

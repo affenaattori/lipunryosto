@@ -14,4 +14,5 @@ public class FlagPoint {
   public string Status {get;set;}="open";
   public Guid? DeviceId {get;set;}
   public DateTimeOffset? LastCapturedAt {get;set;}
+  public Guid? OwnerTeamId {get;set;} // uusi: nykyinen omistaja
 }
