@@ -1,3 +1,15 @@
+name: Build & Deploy (.NET 8 → Azure Web App, OIDC)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: lipunryosto-api
+  AZURE_RESOURCE_GROUP: rg-lipunryosto-prod
+  DOTNET_VERSION: 8.0.x
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-22.04
@@ -9,7 +21,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install OS deps (OpenSSL for .NET)
+      - name: Install OS deps (OpenSSL + zip)
         run: |
           sudo apt-get update
           sudo apt-get install -y libssl3 zip
@@ -17,16 +29,14 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # 1) Restore & Publish
       - name: Restore
         run: dotnet restore ./src/Lipunryosto.Api/Lipunryosto.Api.csproj
 
       - name: Publish
         run: dotnet publish ./src/Lipunryosto.Api/Lipunryosto.Api.csproj -c Release -o "${{ github.workspace }}/publish"
 
-      # 2) Debug – varmista että publish on olemassa
       - name: List publish output
         run: |
           echo "Workspace: $GITHUB_WORKSPACE"
@@ -34,7 +44,6 @@ jobs:
           echo "Publish dir:"
           ls -la "${{ github.workspace }}/publish"
 
-      # 3) Tee zip-paketti deployta varten
       - name: Zip package
         run: |
           cd "${{ github.workspace }}/publish"
@@ -47,11 +56,10 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # 4) Deploy zip
       - name: Deploy to Azure Web App (zip)
         run: |
           az webapp deploy \
-            --resource-group "rg-lipunryosto-prod" \
-            --name "lipunryosto-api" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.AZURE_WEBAPP_NAME }}" \
             --src-path "${{ github.workspace }}/package.zip" \
             --type zip
