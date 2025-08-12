@@ -28,11 +28,24 @@
     navigator.geolocation.watchPosition(pos=>{
       state.coords = pos.coords;
       $("gps").textContent = `GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} ±${pos.coords.accuracy|0}m`;
-      // Päivitä etäisyydet lippulistassa
       renderFlagList();
     }, err=>{ $("gps").textContent = "GPS virhe"; }, { enableHighAccuracy:true, maximumAge:2000, timeout:8000 });
   }
   startGPS();
+
+  // --- URL parametrit (api, token, otp) ---
+  const params = new URLSearchParams(location.search);
+  const pApi   = params.get('api');
+  const pToken = params.get('token');
+  const pOtp   = params.get('otp');
+
+  if (pApi)   { $("apiBase").value = pApi; }
+  if (pToken) { $("publicToken").value = pToken; }
+  if (pOtp)   { $("otp").value = pOtp; }
+
+  if (pApi && pToken) {
+    setTimeout(() => { $("loadBtn").click(); }, 200);
+  }
 
   const hexOnColor = (hex) => {
     hex = (hex||"").replace('0x','#'); if(!/^#?[0-9a-fA-F]{6}$/.test(hex)) return '#0f172a';
@@ -105,25 +118,26 @@
     $("flagCard").style.display = "none";
     $("captureCard").style.display = "block";
     $("hint").textContent = `Valittu lippu: ${flag.name || flag.id}`;
-    hydrateTeamsAndOwner(); // päivitys owneriin
+    hydrateTeamsAndOwner();
   }
 
   async function hydrateFromPublicToken(){
     try{
-      const r = await fetch(`${state.apiBase}/public/games/${state.publicToken}`);
+      const r = await fetch(`${$("apiBase").value.trim().replace(/\/$/,'')}/public/games/${$("publicToken").value.trim()}`);
       if (!r.ok) throw new Error(await r.text());
       const data = await r.json();
+      state.apiBase = $("apiBase").value.trim().replace(/\/$/,'');
+      state.publicToken = $("publicToken").value.trim();
+      state.otp = $("otp").value.trim();
       state.gameId = data.game.id;
       state.teams = data.teams || [];
       state.flags = data.flags || [];
       renderFlagList();
       renderTeamButtons(state.teams);
-      // default owner for first flag (shown after selection)
       $("tokenCard").style.display = "none";
       $("flagCard").style.display = "block";
       log(`Peli haettu tokenilla, gameId=${state.gameId}`);
 
-      // Avaa laite OTP:llä (device/open)
       const r2 = await fetch(`${state.apiBase}/device/open`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ gameId: state.gameId, otp: state.otp, name: 'web-pwa' })
@@ -133,7 +147,6 @@
       state.deviceId = auth.deviceId; state.deviceToken = auth.deviceToken;
       log("Laite avattu");
       $("baseUrlInfo").textContent = state.apiBase;
-      // Hae pelin asetukset
       const g = await fetch(`${state.apiBase}/games/${state.gameId}`);
       if (g.ok) {
         const game = await g.json();
@@ -198,10 +211,10 @@
   setInterval(flush, 5000);
 
   $("loadBtn").onclick = async ()=>{
-    state.apiBase = $("apiBase").value.trim().replace(/\/$/,'');
-    state.publicToken = $("publicToken").value.trim();
-    state.otp = $("otp").value.trim();
-    if (!state.apiBase || !state.publicToken || !state.otp) { $("tokenInfo").textContent = "Täytä API, token ja OTP."; return; }
+    const api = $("apiBase").value.trim();
+    const token = $("publicToken").value.trim();
+    const otp = $("otp").value.trim();
+    if (!api || !token || !otp) { $("tokenInfo").textContent = "Täytä API, token ja OTP."; return; }
     $("tokenInfo").textContent = "Haetaan peliä…";
     await hydrateFromPublicToken();
   };
