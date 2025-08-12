@@ -1,20 +1,8 @@
-name: Build & Deploy (.NET 8 → Azure Web App, OIDC)
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-env:
-  AZURE_WEBAPP_NAME: lipunryosto-api          # Web App -nimesi
-  AZURE_RESOURCE_GROUP: rg-lipunryosto-prod   # Resource group
-  DOTNET_VERSION: '8.0.x'
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-22.04
     permissions:
-      id-token: write        # OIDC vaatii tämän
+      id-token: write
       contents: read
 
     steps:
@@ -24,18 +12,33 @@ jobs:
       - name: Install OS deps (OpenSSL for .NET)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libssl3
+          sudo apt-get install -y libssl3 zip
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-version: '8.0.x'
 
+      # 1) Restore & Publish
       - name: Restore
         run: dotnet restore ./src/Lipunryosto.Api/Lipunryosto.Api.csproj
 
       - name: Publish
-        run: dotnet publish ./src/Lipunryosto.Api/Lipunryosto.Api.csproj -c Release -o ./publish
+        run: dotnet publish ./src/Lipunryosto.Api/Lipunryosto.Api.csproj -c Release -o "${{ github.workspace }}/publish"
+
+      # 2) Debug – varmista että publish on olemassa
+      - name: List publish output
+        run: |
+          echo "Workspace: $GITHUB_WORKSPACE"
+          ls -la "${{ github.workspace }}"
+          echo "Publish dir:"
+          ls -la "${{ github.workspace }}/publish"
+
+      # 3) Tee zip-paketti deployta varten
+      - name: Zip package
+        run: |
+          cd "${{ github.workspace }}/publish"
+          zip -r ../package.zip .
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -44,10 +47,11 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # 4) Deploy zip
       - name: Deploy to Azure Web App (zip)
         run: |
           az webapp deploy \
-            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
-            --name "${{ env.AZURE_WEBAPP_NAME }}" \
-            --src-path ./publish \
+            --resource-group "rg-lipunryosto-prod" \
+            --name "lipunryosto-api" \
+            --src-path "${{ github.workspace }}/package.zip" \
             --type zip
