@@ -1,0 +1,1 @@
+namespace Lipunryosto.Api { public class CaptureOptions { public int GeofenceMeters {get;set;}=50; public int ConfirmGraceSeconds {get;set;}=10; } }
