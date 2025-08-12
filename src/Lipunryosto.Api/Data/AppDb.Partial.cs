@@ -16,6 +16,12 @@ namespace Lipunryosto.Api.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Game>()
+                .HasMany(g => g.Flags)
+                .WithOne(f => f.Game)
+                .HasForeignKey(f => f.GameId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Game>()
                 .Property(g => g.WinCondition)
                 .HasDefaultValue("MostPointsAtTime");
         }
