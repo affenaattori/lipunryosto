@@ -1,0 +1,1 @@
+window.DEVICE_CONFIG = { apiBase: '', geofenceMeters: 50 };
