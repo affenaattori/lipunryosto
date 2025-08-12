@@ -8,19 +8,24 @@ namespace Lipunryosto.Api.Models
         [Key] public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required] public Guid GameId { get; set; }
+
         [ForeignKey(nameof(GameId))] public Game Game { get; set; } = default!;
 
-        public string Name { get; set; } = "Flag";
+        [MaxLength(80)]
+        public string? Name { get; set; }
+
         public double Lat { get; set; }
         public double Lon { get; set; }
-        public string Color { get; set; } = "blue";
-        public int Points { get; set; } = 10;
-        public string Status { get; set; } = "open";
-        public Guid? DeviceId { get; set; }
-        public DateTimeOffset? LastCapturedAt { get; set; }
-        public Guid? OwnerTeamId { get; set; }  // nykyinen omistaja
 
-        // Uusi: luontiaika, jotta voidaan normalisoida nimet A,B,C... järjestyksessä
-        public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+        public int Points { get; set; } = 10;
+
+        [MaxLength(24)]
+        public string? Color { get; set; }
+
+        [MaxLength(24)]
+        public string Status { get; set; } = "open"; // open/closed, etc.
+
+        public Guid? OwnerTeamId { get; set; }
+        public DateTimeOffset? LastCapturedAt { get; set; }
     }
 }

@@ -10,7 +10,6 @@ namespace Lipunryosto.Api.Models
         [Required] public Guid FlagId { get; set; }
         [Required] public Guid TeamId { get; set; }
 
-        // "start" tai "confirm"
         [MaxLength(20)]
         public string Phase { get; set; } = "start";
 

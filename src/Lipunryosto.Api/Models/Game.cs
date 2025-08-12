@@ -9,37 +9,33 @@ namespace Lipunryosto.Api.Models
         [Required, MaxLength(200)]
         public string Name { get; set; } = default!;
 
-        // Pelimekaniikka
+        // Mechanics
         public int CaptureTimeSeconds { get; set; } = 60;
         [MaxLength(50)]
-        public string WinCondition { get; set; } = "MostPointsAtTime"; // MostPointsAtTime | AllFlagsOneTeam
+        public string WinCondition { get; set; } = "MostPointsAtTime";
         public int? TimeLimitMinutes { get; set; }
         public int? MaxPoints { get; set; }
         public string? ArenaName { get; set; }
 
-        // Peli-tila
+        // Status
         public GameStatus Status { get; set; } = GameStatus.NotStarted;
         public DateTimeOffset? StartedAtUtc { get; set; }
         public DateTimeOffset? EndedAtUtc { get; set; }
 
-        // Julkinen linkki / OTP
+        // Tokens
         public string? PublicUrlToken { get; set; }
         public string? OtpHash { get; set; }
 
-        // Ylläpito
+        // Housekeeping
         public bool IsArchived { get; set; } = false;
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
-        // Navigaatio
+        // Navigation
         public ICollection<Team> Teams { get; set; } = new List<Team>();
-
-        // Liput tähän peliin (olettaen FlagPointissa on GameId FK)
         public ICollection<FlagPoint> Flags { get; set; } = new List<FlagPoint>();
 
-        // Joissain kontrolleissa käytetty nimi
-        public ICollection<FlagPoint> FlagPoints => Flags;
-
-        // Joissain kontrolleissa käytetty nimi
+        // Compatibility aliases
         public ICollection<Team> TeamList => Teams;
+        public ICollection<FlagPoint> FlagPoints => Flags;
     }
 }
