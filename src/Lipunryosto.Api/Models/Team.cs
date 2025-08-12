@@ -14,6 +14,9 @@ namespace Lipunryosto.Api.Models
         public string Name { get; set; } = default!;
 
         [MaxLength(32)]
-        public string? Color { get; set; }   // esim. #FF0000 tai nimi
+        public string? Color { get; set; }
+
+        // Pisteet (ScoringService/TeamsController odottaa tätä)
+        public int Score { get; set; } = 0;
     }
 }

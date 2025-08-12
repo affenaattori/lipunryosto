@@ -10,14 +10,19 @@ namespace Lipunryosto.Api.Models
         public string Name { get; set; } = default!;
 
         // Pelimekaniikka
-        public int CaptureTimeSeconds { get; set; } = 60;      // valtauksen kesto
+        public int CaptureTimeSeconds { get; set; } = 60;
         [MaxLength(50)]
         public string WinCondition { get; set; } = "MostPointsAtTime"; // MostPointsAtTime | AllFlagsOneTeam
-        public int? TimeLimitMinutes { get; set; }             // null = ei aikarajaa
-        public int? MaxPoints { get; set; }                    // null = ei pistekattoa
+        public int? TimeLimitMinutes { get; set; }
+        public int? MaxPoints { get; set; }
         public string? ArenaName { get; set; }
 
-        // Julkisen puolen ja laitelukituksen tuki (valinnaista)
+        // Peli-tila (ScoringService odottaa tätä)
+        public GameStatus Status { get; set; } = GameStatus.NotStarted;
+        public DateTimeOffset? StartedAtUtc { get; set; }
+        public DateTimeOffset? EndedAtUtc { get; set; }
+
+        // Julkinen linkki / OTP
         public string? PublicUrlToken { get; set; }
         public string? OtpHash { get; set; }
 
@@ -27,5 +32,8 @@ namespace Lipunryosto.Api.Models
 
         // Navigaatio
         public ICollection<Team> Teams { get; set; } = new List<Team>();
+
+        // Yhteensopivuus: jotkin kontrollerit käyttävät TeamList-nimeä
+        public ICollection<Team> TeamList => Teams;
     }
 }
