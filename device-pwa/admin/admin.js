@@ -77,6 +77,14 @@
   $('addTeam').onclick = ()=>{ state.teamsDraft.push({name:'',color:''}); renderTeams(); };
   renderTeams();
 
+  function api(path) {
+  if (!state.apiBase) {
+    throw new Error("API-osoitetta ei ole asetettu");
+  }
+  if (!path.startsWith("/")) path = "/" + path;
+  return state.apiBase + path;
+}
+  
   // --- Create/select game ---
   $('createGame').onclick = async ()=>{
   if(!state.apiBase){ $('gMsg').textContent='Aseta API-osoite'; return; }
