@@ -3,89 +3,69 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lipunryöstö — Admin</title>
-  <meta name="theme-color" content="#0f172a">
+  <title>Lipunryöstö — Pelien hallinta</title>
   <style>
-    :root{--bg:#0f172a;--card:#111827;--muted:#9ca3af;--line:#1f2937;--accent:#60a5fa;--ok:#10b981}
-    *{box-sizing:border-box}html,body{margin:0;background:#0f172a;color:#e5e7eb;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    :root{--bg:#0f172a;--card:#111827;--line:#1f2937;--muted:#9ca3af;--accent:#60a5fa}
+    *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:#e5e7eb;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
     .wrap{max-width:1100px;margin:0 auto;padding:16px}
-    h1{font-size:22px;margin:8px 0 16px}
-    .card{background:#111827;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
-    label{display:block;font-size:12px;color:#9ca3af;margin:6px 0 4px}
-    input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0b1220;color:#e5e7eb}
-    button{padding:10px 12px;border:0;border-radius:10px;background:var(--accent);color:#0f172a;font-weight:700;cursor:pointer}
-    button.secondary{background:#374151;color:#e5e7eb}
-    .row{display:flex;gap:8px;flex-wrap:wrap}
-    .row > *{flex:1}
-    .muted{color:#9ca3af}
-    .small{font-size:12px}
+    .card{background:#111827;border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    input,select{padding:10px;border-radius:8px;border:1px solid #374151;background:#0b1220;color:#e5e7eb}
+    button{padding:10px 12px;border:0;border-radius:10px;background:var(--accent);color:#0b1220;font-weight:700;cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid #1f2937;padding:10px;text-align:left;font-size:14px}
+    .small{font-size:12px;color:#9ca3af}
+    .team-row{display:flex;gap:8px;margin:6px 0}
     .pill{padding:4px 8px;border-radius:9999px;background:#1f2937;color:#9ca3af;font-size:12px;display:inline-block}
-    table{width:100%;border-collapse:separate;border-spacing:0 8px}
-    th{font-size:12px;color:#9ca3af;text-align:left;padding:6px 8px}
-    td{background:#0b1220;border:1px solid var(--line);padding:8px;border-radius:8px;vertical-align:top}
-    .team-row{display:grid;grid-template-columns:3fr 2fr auto;gap:8px;margin-bottom:8px}
-    .team-row input{width:100%}
   </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🛠️ Lipunryöstö — Pelien hallinta</h1>
 
-  <div class="card">
-    <div class="row">
-      <div><label>API-osoite</label><input id="apiBase" placeholder="https://lipunryosto-api.azurewebsites.net"></div>
-      <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button id="saveApiBtn" class="secondary">Tallenna</button></div>
-      <div style="flex:0 0 auto;display:flex;align-items:flex-end"><span id="apiInfo" class="pill">API: –</span></div>
-    </div>
+  <div class="row">
+    <span class="pill" id="apiInfo">API: –</span>
+    <input id="apiBase" placeholder="https://<api>.azurewebsites.net" style="min-width:360px">
+    <button id="saveApiBtn">Tallenna API</button>
   </div>
 
   <div class="card">
-    <h3>Luo uusi peli</h3>
+    <h2>Luo peli</h2>
     <div class="row">
-      <div><label>Pelin nimi</label><input id="gName" placeholder="Esim. Kesäturnaus 2025"></div>
+      <input id="gName" placeholder="Pelin nimi" style="flex:2">
+      <label>Valtausaika (s)</label>
+      <input id="gCapture" type="number" min="5" value="60" style="width:110px">
+      <label>Voittosääntö</label>
+      <select id="gWin">
+        <option value="MostPointsAtTime">Eniten pisteitä aikarajassa</option>
+        <option value="AllFlagsOneTeam">Kaikki liput yhdellä</option>
+      </select>
+      <label>Aikaraja käytössä?</label>
+      <select id="gTimeEnabled">
+        <option value="false">Ei</option>
+        <option value="true">Kyllä</option>
+      </select>
+      <input id="gTimeLimit" type="number" min="1" value="15" placeholder="Aikaraja (min)" style="width:140px">
+      <input id="gMaxPoints" type="number" min="1" placeholder="Max pisteet (valinnainen)" style="width:180px">
+      <input id="gArena" placeholder="Pelialueen nimi (valinn.)" style="flex:1">
     </div>
 
-    <div class="row">
-      <div><label>Valtaukseen vaadittava aika (sek.)</label><input id="gCapture" type="number" value="60" min="1"></div>
-      <div>
-        <label>Voittosääntö</label>
-        <select id="gWin">
-          <option value="MostPointsAtTime">Aikarajan päättyessä eniten pisteitä</option>
-          <option value="AllFlagsOneTeam">Kaikki liput samalla joukkueella</option>
-        </select>
-      </div>
-      <div>
-        <label>Aikaraja käytössä?</label>
-        <select id="gTimeEnabled">
-          <option value="false">Ei</option>
-          <option value="true">Kyllä</option>
-        </select>
-      </div>
-      <div><label>Aikaraja (min)</label><input id="gTimeLimit" type="number" min="1" value="30"></div>
-    </div>
-
-    <div class="row">
-      <div><label>Maksimipisteet (valinnainen)</label><input id="gMaxPoints" type="number" min="1" placeholder="Esim. 200"></div>
-      <div><label>Pelialueen nimi (valinnainen)</label><input id="gArena" placeholder="Esim. Keskuspuisto"></div>
-    </div>
-
-    <h4>Joukkueet</h4>
+    <h3 style="margin-top:12px">Joukkueet</h3>
     <div id="teamsWrap"></div>
     <div class="row">
-      <button id="addTeamBtn" class="secondary">Lisää joukkue</button>
-      <button id="createGameBtn">Luo peli</button>
+      <button id="addTeamBtn" type="button">Lisää joukkue</button>
+      <button id="createGameBtn" type="button">Luo peli</button>
+      <span id="createInfo" class="small"></span>
     </div>
-    <div class="small muted" style="margin-top:6px">Väri voi olla esim. #FF0000 tai nimet kuten “red”, “blue”.</div>
-    <div id="createInfo" class="muted small" style="margin-top:6px"></div>
   </div>
 
   <div class="card">
-    <h3>Olemassa olevat pelit</h3>
-    <table style="width:100%">
+    <h2>Pelit</h2>
+    <div class="small" id="gamesEmpty">Ei pelejä vielä.</div>
+    <table>
       <thead>
         <tr>
           <th>Nimi</th>
-          <th>GameId</th>
+          <th>Id</th>
           <th>Voittosääntö</th>
           <th>Aikaraja</th>
           <th>Joukkueet</th>
@@ -94,10 +74,9 @@
       </thead>
       <tbody id="gamesTbody"></tbody>
     </table>
-    <div id="gamesEmpty" class="muted">Ei pelejä vielä.</div>
   </div>
 </div>
 
-<script src="admin.js"></script>
+<script src="./admin.js"></script>
 </body>
 </html>
