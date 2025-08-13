@@ -1,1 +1,34 @@
 
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lippupiste</title>
+  <style>
+    html,body{margin:0;background:#0f172a;color:#e5e7eb;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    .wrap{max-width:560px;margin:0 auto;padding:16px}
+    input,button{width:100%;padding:12px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;margin:6px 0}
+    button{border:0;background:#60a5fa;color:#0b1220;font-weight:700;cursor:pointer}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#1f2937;color:#9ca3af;font-size:12px;margin-left:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>Lippupiste</h2>
+    <div id="ctx" class="pill">–</div>
+    <input id="api" placeholder="API URL (https://...azurewebsites.net)">
+    <input id="gameId" placeholder="Peli ID (GUID)">
+    <input id="flagSlug" placeholder="Lippu (A..J)">
+    <input id="name" placeholder="Laitteen nimi (valinnainen)">
+    <button id="activate">Aktivoi lippu</button>
+    <div id="msg"></div>
+    <hr style="border-color:#1f2937;margin:16px 0">
+    <button id="startHb">Käynnistä GPS heartbeat</button>
+    <div class="pill">Lähettää sijainnin 15 s välein</div>
+  </div>
+
+<script src="./device.js"></script>
+</body>
+</html>
+
