@@ -11,31 +11,8 @@ public class FlagsController : ControllerBase
     private readonly AppDb _db;
     public FlagsController(AppDb db){ _db = db; }
 
-    // GET /games/{gameId}/flags
-    [HttpGet]
-    [Route("games/{gameId:guid}/flags")]
-    public async Task<IActionResult> List(Guid gameId)
-    {
-        var game = await _db.Games.Include(g => g.Flags).FirstOrDefaultAsync(g => g.Id == gameId);
-        if (game == null) return NotFound();
-        var flags = game.Flags
-            .OrderBy(f => f.Name)
-            .Select(f => new {
-                id = f.Id,
-                name = f.Name,
-                lat = f.Lat,
-                lon = f.Lon,
-                points = f.Points,
-                color = f.Color,
-                status = f.Status,
-                ownerTeamId = f.OwnerTeamId,
-                lastCapturedAt = f.LastCapturedAt
-            }).ToList();
-        return Ok(flags);
-    }
-
     public record CreateFlagDto(double Lat,double Lon,int Points,string? Color);
-    // POST /games/{gameId}/flags
+
     [HttpPost]
     [Route("games/{gameId:guid}/flags")]
     public async Task<IActionResult> Create(Guid gameId,[FromBody] CreateFlagDto dto)
@@ -58,7 +35,7 @@ public class FlagsController : ControllerBase
     }
 
     public record PatchFlagDto(string? Name,double? Lat,double? Lon,int? Points,string? Color,string? Status, Guid? OwnerTeamId);
-    // PATCH /flags/{flagId}
+
     [HttpPatch]
     [Route("flags/{flagId:guid}")]
     public async Task<IActionResult> Patch(Guid flagId,[FromBody] PatchFlagDto dto)
@@ -78,22 +55,21 @@ public class FlagsController : ControllerBase
         return Ok(new { ok = true });
     }
 
-    // POST /games/{gameId}/flags/normalize-names
+    // Nimeä liput peräkkäin A, B, C ...; ei CreatedAt-riippuvuutta
     [HttpPost]
     [Route("games/{gameId:guid}/flags/normalize-names")]
     public async Task<IActionResult> Normalize(Guid gameId)
     {
-        var flags = await _db.Flags.Where(x => x.GameId == gameId).OrderBy(x => x.CreatedAt).ToListAsync();
-        // If CreatedAt missing in your model, order by Id
+        var flags = await _db.Flags.Where(x => x.GameId == gameId).OrderBy(x => x.Id).ToListAsync();
         if (flags.Count == 0) return Ok(new { ok = true, updated = 0 });
 
-        int idx = 0;
-        foreach (var f in flags)
+        for (int idx = 0; idx < flags.Count; idx++)
         {
-            var name = $"Lippupiste { (char)('A' + (idx % 26)) }";
-            if (idx >= 26) name += $"{idx/26+1}"; // A1, B1 ... if >26
+            var f = flags[idx];
+            var baseChar = (char)('A' + (idx % 26));
+            var name = $"Lippupiste {baseChar}";
+            if (idx >= 26) name += $"{(idx/26)+1}";
             f.Name = name;
-            idx++;
         }
         await _db.SaveChangesAsync();
         return Ok(new { ok = true, updated = flags.Count });
