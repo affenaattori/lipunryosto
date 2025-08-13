@@ -9,9 +9,6 @@ namespace Lipunryosto.Api.Services
         private readonly AppDb _db;
         public ScoringService(AppDb db){ _db = db; }
 
-        /// <summary>
-        /// Lisää pisteet tiimille ja tarkistaa yksinkertaiset voittoehtot.
-        /// </summary>
         public async Task AwardAsync(Guid gameId, Guid teamId, int points)
         {
             var game = await _db.Games
@@ -25,16 +22,17 @@ namespace Lipunryosto.Api.Services
 
             team.Score += points;
 
-            // Tarkista MaxPoints
+            // MaxPoints-voitto
             if (game.MaxPoints.HasValue && team.Score >= game.MaxPoints.Value)
             {
-                game.Status = GameStatus.Ended;
+                game.Status = GameStatus.Ended; // EI merkkijonoa
             }
 
-            // Tarkista AllFlagsOneTeam
+            // AllFlagsOneTeam-voitto
             if (string.Equals(game.WinCondition, "AllFlagsOneTeam", StringComparison.OrdinalIgnoreCase))
             {
-                if (game.Flags.Count > 0 && game.Flags.All(f => f.OwnerTeamId == teamId))
+                // Flags on ICollection -> Count property löytyy, mutta varmistetaan Any() & All()
+                if (game.Flags != null && game.Flags.Count > 0 && game.Flags.All(f => f.OwnerTeamId == teamId))
                 {
                     game.Status = GameStatus.Ended;
                 }
