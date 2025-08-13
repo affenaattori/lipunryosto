@@ -1,39 +1,65 @@
-
 using Lipunryosto.Api.Data;
-using Lipunryosto.Api.Hubs;
-using Lipunryosto.Api.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
-using Lipunryosto.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var useSql = builder.Configuration.GetValue<bool>("Database:UseSqlServer");
-if (useSql)
-    builder.Services.AddDbContext<AppDb>(opt => opt.UseSqlServer(builder.Configuration.GetConnectionString("Sql")));
+// CORS (salli SWA:n domaini)
+var swa = builder.Configuration["SWA_ORIGIN"]; // esim. https://red-coast-...azurestaticapps.net
+builder.Services.AddCors(opt =>
+{
+    opt.AddDefaultPolicy(p =>
+        p.WithOrigins(swa ?? "*")
+         .AllowAnyHeader()
+         .AllowAnyMethod());
+});
+
+// InMemory toggle
+var useInMemory = (builder.Configuration["USE_INMEMORY"] ?? "").ToLowerInvariant() == "true";
+if (useInMemory)
+{
+    builder.Services.AddDbContext<AppDb>(opt =>
+        opt.UseInMemoryDatabase("LipunryostoDb"));
+}
 else
-    builder.Services.AddDbContext<AppDb>(opt => opt.UseInMemoryDatabase("lipunryosto-dev"));
+{
+    var conn = builder.Configuration.GetConnectionString("Default");
+    builder.Services.AddDbContext<AppDb>(opt =>
+        opt.UseSqlServer(conn));
+}
 
-builder.Services.AddSignalR();
-if (builder.Configuration.GetValue<bool>("SignalR:UseAzure"))
-    builder.Services.AddSignalR().AddAzureSignalR(builder.Configuration["Azure:SignalR:ConnectionString"]);
+// ÄLÄ kutsu db.Database.Migrate() kun InMemory on päällä
+// (jos käytät migraatioita, tee se vain kun !useInMemory)
 
-builder.Services.Configure<CaptureOptions>(builder.Configuration.GetSection("Capture"));
-builder.Services.AddScoped<OtpService>();
-builder.Services.AddScoped<ScoringService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c => c.SwaggerDoc("v1", new OpenApiInfo { Title="Lipunryöstö Admin API", Version="v1" }));
-builder.Services.AddCors(opt => opt.AddPolicy("default", p => p.AllowAnyHeader().AllowAnyMethod().AllowCredentials().SetIsOriginAllowed(_=>true)));
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
-app.UseCors("default");
-if (app.Environment.IsDevelopment()){
-    app.UseSwagger(); app.UseSwaggerUI();
+
+app.UseCors();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
+
+// Yksinkertainen globaali virheloki, ettei 500 jää piiloon
+app.Use(async (ctx, next) =>
+{
+    try { await next(); }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine("UNHANDLED: " + ex);
+        ctx.Response.StatusCode = 500;
+        await ctx.Response.WriteAsync("Server error");
+    }
+});
+
 app.MapControllers();
-app.MapHub<AdminHub>("/hubs/admin");
-app.MapHub<PublicHub>("/hubs/public");
-app.MapHub<DeviceHub>("/hubs/device");
-app.MapGet("/healthz", () => Results.Ok(new { ok = true, env = app.Environment.EnvironmentName }));
+
+Console.WriteLine("USE_INMEMORY=" + useInMemory);
+Console.WriteLine("EF Provider: " + app.Services.GetRequiredService<AppDb>().Database.ProviderName);
+
 app.Run();
