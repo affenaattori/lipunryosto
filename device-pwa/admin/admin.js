@@ -1,3 +1,4 @@
+<script>
 (function(){
   const $ = id => document.getElementById(id);
   const state = {
@@ -5,22 +6,18 @@
     teams: []
   };
 
-  // URL param api override
   const params = new URLSearchParams(location.search);
   if (params.get('api')) state.apiBase = params.get('api');
   if ($('apiBase')) $('apiBase').value = state.apiBase;
   if ($('apiInfo')) $('apiInfo').textContent = state.apiBase || 'API: –';
-
   if ($('saveApiBtn')) $('saveApiBtn').onclick = () => {
     state.apiBase = $('apiBase').value.trim();
     localStorage.setItem('admin_apiBase', state.apiBase);
     $('apiInfo').textContent = state.apiBase || 'API: –';
   };
 
-  // Team builder
   function renderTeams(){
-    const wrap = $('teamsWrap');
-    if (!wrap) return;
+    const wrap = $('teamsWrap'); if(!wrap) return;
     wrap.innerHTML = '';
     if (state.teams.length === 0){
       state.teams.push({ name:'Sininen', color:'#2563eb' }, { name:'Punainen', color:'#ef4444' });
@@ -31,8 +28,7 @@
       row.innerHTML = `
         <input placeholder="Joukkueen nimi" value="${escapeHtml(t.name||'')}" data-k="name">
         <input placeholder="Väri (esim. #FF0000)" value="${escapeHtml(t.color||'')}" data-k="color">
-        <button data-act="remove">Poista</button>
-      `;
+        <button data-act="remove">Poista</button>`;
       row.querySelector('[data-k="name"]').oninput = (e)=>{ state.teams[i].name = e.target.value; };
       row.querySelector('[data-k="color"]').oninput = (e)=>{ state.teams[i].color = e.target.value; };
       row.querySelector('[data-act="remove"]').onclick = ()=>{ state.teams.splice(i,1); renderTeams(); };
@@ -42,12 +38,11 @@
   if ($('addTeamBtn')) $('addTeamBtn').onclick = () => { state.teams.push({ name:'', color:'' }); renderTeams(); };
   renderTeams();
 
-  // Helpers
   function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
   function api(path){ return `${state.apiBase.replace(/\/$/,'')}${path}`; }
   function setCreateInfo(msg){ const el=$('createInfo'); if (el) el.textContent = msg || ''; }
 
-  // Create game (patched: optional maxPoints, dto-wrapper fallback)
+  // PELIN LUONTI (fallbackit dto-wrapperiin sekä PascalCaseen)
   if ($('createGameBtn')) $('createGameBtn').onclick = async () => {
     if (!state.apiBase){ setCreateInfo('Aseta ensin API-osoite.'); return; }
     const name = $('gName').value.trim();
@@ -67,52 +62,37 @@
 
     if (cleanTeams.length < 2){ setCreateInfo('Vähintään 2 nimettyä joukkuetta vaaditaan.'); return; }
 
-    const base = {
-      name,
-      captureTimeSeconds: Number.isFinite(capture) ? capture : 60,
-      winCondition: win, // "MostPointsAtTime" | "AllFlagsOneTeam"
-      arenaName: arena,
-      teams: cleanTeams
+    const baseCamel = {
+      name, captureTimeSeconds:capture, winCondition:win, arenaName:arena, teams: cleanTeams
     };
-    if (timeEnabled && Number.isFinite(timeLimit)) base.timeLimitMinutes = timeLimit;
-    if (maxPointsInput !== '' && !Number.isNaN(parseInt(maxPointsInput,10))) {
-      base.maxPoints = parseInt(maxPointsInput,10);
+    if (timeEnabled) baseCamel.timeLimitMinutes = timeLimit;
+    if (maxPointsInput !== '' && !Number.isNaN(parseInt(maxPointsInput,10))) baseCamel.maxPoints = parseInt(maxPointsInput,10);
+    const basePascal = {
+      Name:name, CaptureTimeSeconds:capture, CaptureMode:"TwoTapConfirm", WinCondition:win, ArenaName:arena,
+      Teams: cleanTeams.map(t=>({Name:t.name, Color:t.color}))
+    };
+    if (timeEnabled) basePascal.TimeLimitMinutes = timeLimit;
+    if (maxPointsInput !== '' && !Number.isNaN(parseInt(maxPointsInput,10))) basePascal.MaxPoints = parseInt(maxPointsInput,10);
+
+    const clean = o => JSON.parse(JSON.stringify(o));
+    async function tryPost(payload){
+      const r = await fetch(api('/games'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(clean(payload)) });
+      const text = await r.text(); return { ok:r.ok, status:r.status, text };
     }
-
-    const clean = obj => JSON.parse(JSON.stringify(obj)); // drop undefined
-
-    async function tryCreate(payload) {
-      const r = await fetch(api('/games'), {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(clean(payload))
-      });
-      const txt = await r.text();
-      return { ok: r.ok, status: r.status, text: txt };
-    }
-
     try{
       setCreateInfo('Luodaan peli…');
-
-      // 1) yritä ilman wrapperia
-      let res = await tryCreate(base);
-
-      // 2) jos 400 ja maininta dto:sta, yritä { dto: base }
-      if (!res.ok && res.status === 400 && /"dto"| dto /i.test(res.text)) {
-        res = await tryCreate({ dto: base });
+      let res = await tryPost(baseCamel);
+      if (!res.ok && res.status === 400 && /"dto"| dto /i.test(res.text)) res = await tryPost({ dto: baseCamel });
+      if (!res.ok && res.status === 400) {
+        res = await tryPost(basePascal);
+        if (!res.ok && res.status === 400 && /"dto"| dto /i.test(res.text)) res = await tryPost({ dto: basePascal });
       }
-
-      if (!res.ok) throw new Error(res.text || 'Tuntematon virhe');
-
-      setCreateInfo('Peli luotu ✓');
-      await loadGames();
-      $('gName').value='';
-    }catch(e){
-      setCreateInfo('Virhe pelin luonnissa: ' + (e?.message||e));
-    }
+      if (!res.ok) throw new Error(res.text||'Virhe');
+      setCreateInfo('Peli luotu ✓'); await loadGames(); $('gName').value='';
+    }catch(e){ setCreateInfo('Virhe pelin luonnissa: ' + (e?.message||e)); }
   };
 
-  // List games
+  // PELILISTA + NAPIT
   async function loadGames(){
     if (!state.apiBase) return;
     const tbody = $('gamesTbody'); const empty = $('gamesEmpty');
@@ -126,31 +106,40 @@
       if (empty) empty.style.display = 'none';
       list.forEach(g => {
         const tr = document.createElement('tr');
-        const timeTxt = g.timeLimitMinutes ? `${g.timeLimitMinutes} min` : '—';
-        const teamsTxt = (g.teams||[]).map(t=>t.name).join(', ');
+        const timeTxt = g.timeLimitMinutes ? `${g.timeLimitMinutes} min` : (g.TimeLimitMinutes ? `${g.TimeLimitMinutes} min` : '—');
+        const win = g.winCondition || g.WinCondition;
+        const teams = g.teams || g.Teams || [];
+        const teamsTxt = teams.map(t=> (t.name||t.Name) ).join(', ');
+        const gid = g.id || g.Id;
         tr.innerHTML = `
-          <td>${escapeHtml(g.name||'')}</td>
-          <td class="small">${g.id}</td>
-          <td>${g.winCondition==='AllFlagsOneTeam'?'Kaikki liput yhdellä':'Eniten pisteitä aikarajassa'}</td>
+          <td>${escapeHtml((g.name||g.Name||''))}</td>
+          <td class="small">${gid}</td>
+          <td>${win==='AllFlagsOneTeam'?'Kaikki liput yhdellä':'Eniten pisteitä aikarajassa'}</td>
           <td>${timeTxt}</td>
           <td>${escapeHtml(teamsTxt)}</td>
           <td>
             <div class="row">
-              <button data-act="flags">Avaa lipunhallinta</button>
+              <button data-act="flags">Lippujen hallinta</button>
+              <button data-act="details">Pelin sivu</button>
+              <button data-act="overview">Kartta-yleiskuva</button>
             </div>
-          </td>
-        `;
+          </td>`;
         tr.querySelector('[data-act="flags"]').onclick = () => {
-          const base = location.origin; // same SWA origin
-          const url = `${base}/admin-flags/flags.html?api=${encodeURIComponent(state.apiBase)}&gameId=${g.id}`;
+          const url = `${location.origin}/admin-flags/flags.html?api=${encodeURIComponent(state.apiBase)}&gameId=${gid}`;
+          window.open(url, '_blank');
+        };
+        tr.querySelector('[data-act="details"]').onclick = () => {
+          const url = `${location.origin}/admin/game.html?api=${encodeURIComponent(state.apiBase)}&gameId=${gid}`;
+          window.open(url, '_blank');
+        };
+        tr.querySelector('[data-act="overview"]').onclick = () => {
+          const url = `${location.origin}/admin-flags/overview.html?api=${encodeURIComponent(state.apiBase)}&gameId=${gid}`;
           window.open(url, '_blank');
         };
         tbody.appendChild(tr);
       });
-    }catch(e){
-      console.error(e);
-    }
+    }catch(e){ console.error(e); }
   }
-
   if (state.apiBase) setTimeout(loadGames, 200);
 })();
+</script>
