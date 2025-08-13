@@ -95,7 +95,10 @@ public class GamesController : ControllerBase
         // Vaatimukset: Name, CaptureTimeSeconds, WinCondition, Teams[ { Name, Color } ]
         string name = GetString(body, "name", "Name") ?? string.Empty;
         if (string.IsNullOrWhiteSpace(name))
-            return ValidationProblem(new Dictionary<string, string[]> { { "Name", new[] { "Name is required." } } });
+        {
+            var errors = new Dictionary<string, string[]> { { "Name", new[] { "Name is required." } } };
+            return BadRequest(new { errors });
+        }
 
         int captureTimeSeconds = GetInt(body, "captureTimeSeconds", "CaptureTimeSeconds") ?? 60;
         string winCondition = (GetString(body, "winCondition", "WinCondition") ?? "MostPointsAtTime").Trim();
@@ -107,7 +110,10 @@ public class GamesController : ControllerBase
         // Teams
         var teamsElem = GetArray(body, "teams", "Teams");
         if (teamsElem is null || teamsElem.Value.GetArrayLength() < 2)
-            return ValidationProblem(new Dictionary<string, string[]> { { "Teams", new[] { "At least 2 teams required." } } });
+        {
+            var errors = new Dictionary<string, string[]> { { "Teams", new[] { "At least 2 teams required." } } };
+            return BadRequest(new { errors });
+        }
 
         var teamEntities = new List<Team>();
         foreach (var t in teamsElem.Value.EnumerateArray())
@@ -118,7 +124,10 @@ public class GamesController : ControllerBase
             teamEntities.Add(new Team { Name = tn!.Trim(), Color = tc?.Trim() });
         }
         if (teamEntities.Count < 2)
-            return ValidationProblem(new Dictionary<string, string[]> { { "Teams", new[] { "At least 2 teams with names required." } } });
+        {
+            var errors = new Dictionary<string, string[]> { { "Teams", new[] { "At least 2 teams with names required." } } };
+            return BadRequest(new { errors });
+        }
 
         // Normalisoi voittosääntö
         if (!string.Equals(winCondition, "MostPointsAtTime", StringComparison.OrdinalIgnoreCase) &&
