@@ -17,9 +17,8 @@ public class FlagsForGameController : ControllerBase
         var game = await _db.Games.Include(g => g.Flags).FirstOrDefaultAsync(g => g.Id == gameId);
         if (game == null) return NotFound();
 
-        // Järjestys: CreatedAt jos olemassa, muuten Id
         var flags = game.Flags
-            .OrderBy(f => f.CreatedAt) // CreatedAt lisättiin malliin
+            .OrderBy(f => f.Id) // vältetään CreatedAt-riippuvuus
             .Select(f => new {
                 id = f.Id,
                 name = f.Name,
