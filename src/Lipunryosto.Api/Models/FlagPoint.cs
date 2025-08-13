@@ -7,36 +7,29 @@ namespace Lipunryosto.Api.Models
     {
         [Key] public Guid Id { get; set; } = Guid.NewGuid();
 
-        // Pakollinen FK peliin
         [Required] public Guid GameId { get; set; }
+        [ForeignKey(nameof(GameId))] public Game Game { get; set; } = default!;
 
-        // Navigaatio peliin (AppDb.Partial.cs odottaa f.Game -propertyä)
-        [ForeignKey(nameof(GameId))]
-        public Game Game { get; set; } = default!;
-
-        // Näyttönimi (voidaan normalisoida A, B, C …)
         [MaxLength(120)]
         public string? Name { get; set; }
 
-        // Sijainti (päivittyy myös Device/Heartbeatistä jos device on sidottu tähän lippuun)
+        // UUSI: pysyvä lyhyt tunniste/nimi URL:iin (A..J)
+        [MaxLength(20)]
+        public string? Slug { get; set; }
+
         public double Lat { get; set; }
         public double Lon { get; set; }
-
-        // Lipun arvo
         public int Points { get; set; } = 10;
 
-        // Ulkoasu/admin-info
         [MaxLength(24)]
-        public string? Color { get; set; }  // esim. "#FF0000" tai nimiväri
+        public string? Color { get; set; }
 
         [MaxLength(24)]
-        public string? Status { get; set; } = "open"; // esim. "open"/"closed" tms.
+        public string? Status { get; set; } = "open";
 
-        // Omistaja ja viimeisin valloitus
         public Guid? OwnerTeamId { get; set; }
         public DateTimeOffset? LastCapturedAt { get; set; }
 
-        // Valinnainen, jos haluat järjestää tai debuggata
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     }
 }
