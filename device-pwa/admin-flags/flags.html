@@ -3,20 +3,57 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Liput — GPS</title>
+  <title>Lippujen hallinta — GPS</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    html,body,#map{height:100%;margin:0}
-    .toolbar{position:absolute;top:10px;left:10px;z-index:1000;background:#111827aa;color:#e5e7eb;padding:8px 10px;border-radius:8px}
-    button{padding:6px 10px;border:0;border-radius:6px;cursor:pointer;margin-right:6px}
+    html,body{height:100%;margin:0;background:#0f172a;color:#e5e7eb;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    #map{position:absolute;top:0;right:0;bottom:0;left:340px}
+    .side{position:absolute;top:0;left:0;bottom:0;width:340px;background:#111827;border-right:1px solid #1f2937;overflow:auto}
+    .sec{padding:12px;border-bottom:1px solid #1f2937}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    input{padding:8px;border-radius:8px;border:1px solid #374151;background:#0b1220;color:#e5e7eb}
+    input[type="number"]{width:110px}
+    button{padding:9px 12px;border:0;border-radius:8px;background:#60a5fa;color:#0b1220;font-weight:700;cursor:pointer}
+    .muted{color:#9ca3af;font-size:12px}
+    .flag-item{padding:8px;border:1px solid #1f2937;border-radius:8px;margin:6px 0;background:#0b1220}
+    .flag-title{font-weight:700}
+    .chip{display:inline-block;padding:2px 6px;border-radius:9999px;background:#1f2937;color:#9ca3af;font-size:12px;margin-left:6px}
+    .color-swatch{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid #1f2937;margin-left:6px;vertical-align:middle}
   </style>
 </head>
 <body>
-<div id="map"></div>
-<div class="toolbar">
-  <button id="refreshBtn">Päivitä</button>
-  <span id="info"></span>
+<div class="side">
+  <div class="sec">
+    <div style="font-weight:700">Lippujen hallinta</div>
+    <div id="ctx" class="muted">–</div>
+  </div>
+
+  <div class="sec">
+    <div style="font-weight:700;margin-bottom:6px;">Lisää lippu</div>
+    <div class="row" style="margin-bottom:6px;">
+      <input id="fName" placeholder="Nimi (esim. Lippupiste A)" style="flex:1">
+    </div>
+    <div class="row" style="margin-bottom:6px;">
+      <input id="fPoints" type="number" min="1" value="10" placeholder="Pisteet">
+      <input id="fColor" placeholder="Väri (esim. #FF0000)" style="width:160px">
+    </div>
+    <div class="muted" style="margin-bottom:6px;">Valitse sijainti klikkaamalla karttaa — tai käytetään kartan keskikoordinaattia.</div>
+    <div class="row">
+      <button id="addFlagBtn">Lisää lippu</button>
+      <button id="normalizeBtn" title="Nimeä A…J ja aseta slugit">Normalisoi A…J</button>
+    </div>
+    <div id="addInfo" class="muted" style="margin-top:6px;"></div>
+  </div>
+
+  <div class="sec">
+    <div style="font-weight:700;margin-bottom:6px;">Liput</div>
+    <div id="listInfo" class="muted">Ladataan…</div>
+    <div id="flagsList"></div>
+  </div>
 </div>
+
+<div id="map"></div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="flags-gps.js"></script>
 </body>
