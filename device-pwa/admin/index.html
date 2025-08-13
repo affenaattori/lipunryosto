@@ -1,6 +1,13 @@
 <!doctype html>
 <html lang="fi">
 <head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Leaflet.Draw -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lipunryöstö — Admin</title>
@@ -96,17 +103,19 @@
       </div>
 
       <div class="card">
-        <h3>Yleiskuva (staattisen kuvan päällä)</h3>
-        <div class="canvas-wrap">
-          <canvas id="mapCanvas" width="1000" height="540"></canvas>
-          <div class="legend small">
-            <div id="legendTeams"></div>
-            <div class="small" style="margin-top:6px">Zoomaa rullalla • Panoroi raahaamalla</div>
-          </div>
-        </div>
-      </div>
-    </div>
+  <h3>Yleiskuva (Leaflet-kartta)</h3>
+
+  <div class="row" style="margin-bottom:8px">
+    <button id="enableDraw">Piirrä alueen raja</button>
+    <button id="saveArea" class="btn-ok">Tallenna alue</button>
+    <button id="clearArea" class="btn-danger">Tyhjennä alue</button>
+    <span id="areaMsg" class="small"></span>
   </div>
+
+  <div id="leafletMap" style="height:540px;border-radius:12px;overflow:hidden;border:1px solid #1f2937"></div>
+  <div class="small" style="margin-top:6px">Kartta: © OpenStreetMap -tekijät • Attribuutio vaaditaan</div>
+</div>
+
 
 <script src="./admin.js"></script>
 </body>
