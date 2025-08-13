@@ -27,8 +27,8 @@ public class DeviceController : ControllerBase
     }
 
     // -------------------------------------------------
-    // 1) Rekisteröi laite peliin ilman OTP:tä (slugilla)
-    //    Esim. body: { "gameId":"...", "flagSlug":"A", "name":"Kenttälaite A" }
+    // 1) Rekisteröi laite peliin ilman OTP:tä (slugilla A..J)
+    // Body: { "gameId":"...", "flagSlug":"A", "name":"Kenttälaite A" }
     // -------------------------------------------------
     public record DeviceRegisterDto(Guid GameId, string FlagSlug, string? Name);
 
@@ -50,7 +50,7 @@ public class DeviceController : ControllerBase
         _db.Devices.Add(dev);
         await _db.SaveChangesAsync();
 
-        // Token on vapaaehtoinen; pidetään yhteensopivuus olemassa olevan mallin kanssa
+        // Yhteensopivuuden vuoksi jätetään kevyeksi "tokeniksi" satunnaisguid (ei pakollinen käyttöön)
         var token = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
         dev.DeviceTokenHash = token;
         await _db.SaveChangesAsync();
@@ -61,8 +61,8 @@ public class DeviceController : ControllerBase
     }
 
     // -------------------------------------------------
-    // 2) Laitteen heartbeat
-    //    Päivittää laitteen sijainnin ja tarvittaessa myös lipun sijainnin
+    // 2) Laitteen heartbeat: päivittää laitteen ja (jos paritettu) lipun koordinaatit
+    // Body: { "deviceId":"...", "lat":60.17, "lon":24.94, "accuracy":5 }
     // -------------------------------------------------
     public record HeartbeatDto(Guid DeviceId, double? Lat, double? Lon, double? Accuracy);
 
@@ -83,9 +83,6 @@ public class DeviceController : ControllerBase
             var flag = await _db.Flags.FirstOrDefaultAsync(x => x.Id == dev.AssignedFlagId.Value);
             if (flag != null)
             {
-                // Jos haluat, voit tarkistaa siirtymän ja päivittää vain jos > X m:
-                // var moved = GeoHelper.Haversine(flag.Lat, flag.Lon, dto.Lat.Value, dto.Lon.Value);
-                // if (moved > 3.0) { ... }
                 flag.Lat = dto.Lat.Value;
                 flag.Lon = dto.Lon.Value;
                 await _db.SaveChangesAsync();
@@ -115,7 +112,8 @@ public class DeviceController : ControllerBase
     }
 
     // -------------------------------------------------
-    // 3) Valloitus (kahden vaiheen malli: start -> confirm)
+    // 3) Valloitus (kahdessa vaiheessa: start -> confirm)
+    // Body: { "teamId":"...", "phase":"start"|"confirm", "lat":..., "lon":..., "accuracy":... }
     // -------------------------------------------------
     public record CaptureDto(Guid TeamId, string Phase, double? Lat, double? Lon, double? Accuracy);
 
@@ -130,7 +128,6 @@ public class DeviceController : ControllerBase
 
         var now = DateTimeOffset.UtcNow;
 
-        // Talleta tapahtuma (timeline)
         var ev = new CaptureEvent
         {
             GameId = game.Id,
@@ -150,7 +147,6 @@ public class DeviceController : ControllerBase
 
         if (string.Equals(dto.Phase, "confirm", StringComparison.OrdinalIgnoreCase))
         {
-            // Etsi uusin "start" samalle lipulle & tiimille
             var start = await _db.Events
                 .Where(x => x.GameId == game.Id && x.FlagId == flag.Id && x.TeamId == dto.TeamId && x.Phase == "start")
                 .OrderByDescending(x => x.Timestamp)
@@ -158,18 +154,17 @@ public class DeviceController : ControllerBase
             if (start is null) return BadRequest("Start not found");
 
             var elapsed = now - start.Timestamp;
-            // 10 s armovara ennen CaptureTimeSeconds-rajaa
+            // Pieni 10 s armovara ennen CaptureTimeSeconds-rajaa
             if (elapsed.TotalSeconds + 10 < game.CaptureTimeSeconds)
                 return BadRequest("Confirm too early");
 
-            // (valinnainen) geo-fence
-            if (dto.Lat.HasValue && dto.Lon.HasValue && flag.Lat != 0 && flag.Lon != 0)
-            {
-                var dist = GeoHelper.Haversine(flag.Lat, flag.Lon, dto.Lat.Value, dto.Lon.Value);
-                if (dist > 50) return BadRequest("Out of geofence"); // 50 m oletus
-            }
+            // (valinn.) geofence — poista/kommentoi jos et käytä GeoHelperia
+            // if (dto.Lat.HasValue && dto.Lon.HasValue && flag.Lat != 0 && flag.Lon != 0)
+            // {
+            //     var dist = GeoHelper.Haversine(flag.Lat, flag.Lon, dto.Lat.Value, dto.Lon.Value);
+            //     if (dist > 50) return BadRequest("Out of geofence"); // 50 m oletus
+            // }
 
-            // Pisteet + omistajuus
             await _scoring.AwardAsync(game.Id, dto.TeamId, flag.Points);
             flag.LastCapturedAt = now;
             flag.OwnerTeamId = dto.TeamId;
@@ -183,7 +178,7 @@ public class DeviceController : ControllerBase
     }
 
     // -------------------------------------------------
-    // 4) Parita laite tiettyyn lippuun (administa helppo käyttää)
+    // 4) Parita laite tiettyyn lippuun (esim. administa)
     // -------------------------------------------------
     [HttpPost("{deviceId:guid}/assign-flag/{flagId:guid}")]
     public async Task<IActionResult> AssignFlag(Guid deviceId, Guid flagId)
