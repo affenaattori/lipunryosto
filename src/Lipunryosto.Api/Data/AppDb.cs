@@ -12,5 +12,7 @@ namespace Lipunryosto.Api.Data
         public DbSet<FlagPoint> Flags => Set<FlagPoint>();
         public DbSet<Device> Devices => Set<Device>();
         public DbSet<CaptureEvent> Events => Set<CaptureEvent>();
+        public DbSet<FlagPoint> Flags { get; set; }
+
     }
 }
