@@ -8,7 +8,6 @@ namespace Lipunryosto.Api.Models
         [Key] public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required] public Guid GameId { get; set; }
-
         [ForeignKey(nameof(GameId))] public Game Game { get; set; } = default!;
 
         [MaxLength(80)]
@@ -23,9 +22,12 @@ namespace Lipunryosto.Api.Models
         public string? Color { get; set; }
 
         [MaxLength(24)]
-        public string Status { get; set; } = "open"; // open/closed, etc.
+        public string Status { get; set; } = "open"; // open/closed
 
         public Guid? OwnerTeamId { get; set; }
         public DateTimeOffset? LastCapturedAt { get; set; }
+
+        // Lisätty build-virheiden korjaamiseksi
+        public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     }
 }
