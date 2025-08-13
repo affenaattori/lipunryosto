@@ -24,6 +24,13 @@
   };
 
   // ------------------ Helpers ------------------
+async function fetchJsonSafe(url, init){
+  const r = await fetch(url, init);
+  const text = await r.text();
+  if (!r.ok) throw new Error(text || `HTTP ${r.status}`);
+  if (!text || !text.trim()) return null;   // tyhjä runko OK
+  try { return JSON.parse(text); } catch { return null; }
+} 
   function esc(s){ return (s??'').toString().replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
   function api(path){
     if (!state.apiBase) throw new Error('API-osoitetta ei ole asetettu');
@@ -244,10 +251,10 @@
       let game;
       if(res.text && res.text.trim().length>0){ try{ game = JSON.parse(res.text); }catch{} }
       if(!game && res.location){
-        try{ const gr = await fetch(res.location); if(gr.ok) game = await gr.json(); }catch{}
+        try{ const gr = await fetchJsonSafe(res.location); if(gr.ok) game = await gr.json(); }catch{}
       }
       if(!game){
-        const lr = await fetch(api('/games'));
+        const lr = await fetchJsonSafe(api('/games'));
         const list = await lr.json();
         if(Array.isArray(list) && list.length) game = list[0];
       }
@@ -267,35 +274,38 @@
 
   // ------------------ Load latest game on init ------------------
   async function pickLatestGame(){
-    if(!state.apiBase) return;
-    try{
-      const r = await fetch(api('/games'));
-      const list = await r.json();
-      if(Array.isArray(list) && list.length){
-        state.selectedGameId = list[0].id || list[0].Id;
-        $('gameInfo').textContent = `Peli: ${list[0].name || list[0].Name} (${list[0].status})`;
-        await reloadGame();
-        loadAreaFromStorage();
-        await reloadFlags();
-      }
-    }catch{}
+  if(!state.apiBase) return;
+  try{
+    const list = await fetchJsonSafe(api('/games'));
+    if(Array.isArray(list) && list.length){
+      state.selectedGameId = list[0].id || list[0].Id;
+      $('gameInfo').textContent = `Peli: ${list[0].name || list[0].Name} (${list[0].status || list[0].Status})`;
+      await reloadGame();
+      loadAreaFromStorage();
+      await reloadFlags();
+    }
+  }catch(e){
+    console.warn('pickLatestGame failed:', e);
   }
+}
 
   // ------------------ Fetch game & flags ------------------
-  async function reloadGame(){
-    if(!state.selectedGameId) return;
-    const r = await fetch(api(`/games/${state.selectedGameId}`));
-    state.gameCache = await r.json();
-    renderLegendFromDraft();
-  }
+async function reloadGame(){
+  if(!state.selectedGameId) return;
+  const data = await fetchJsonSafe(api(`/games/${state.selectedGameId}`));
+  state.gameCache = data || null;         // sallitaan null, jos body tyhjä
+  renderLegendFromDraft();
+}
+
   async function reloadFlags(){
-    if(!state.selectedGameId) return;
-    const r = await fetch(api(`/games/${state.selectedGameId}/flags`));
-    state.flags = await r.json();
-    renderFlagList();
-    renderFlagsOnMap();
-    if(!state.drawnPolygon) fitDefault();
-  }
+  if(!state.selectedGameId) return;
+  const data = await fetchJsonSafe(api(`/games/${state.selectedGameId}/flags`));
+  state.flags = Array.isArray(data) ? data : [];
+  renderFlagList();
+  renderFlagsOnMap();
+  if(!state.drawnPolygon) fitDefault();
+}
+
 
   // ------------------ Game controls ------------------
   $('startGame').onclick = ()=> gameCtrl('start','Käynnissä ✓');
