@@ -57,6 +57,55 @@ public class DeviceController : ControllerBase
         return Ok(new { deviceId = d.Id, deviceToken = token, assignedFlagId = d.AssignedFlagId });
     }
 
+// -------- /device/{deviceId}/assign-flag/{flagId} --------
+[HttpPost("{deviceId:guid}/assign-flag/{flagId:guid}")]
+public async Task<IActionResult> AssignFlag(Guid deviceId, Guid flagId)
+{
+    var dev = await _db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId);
+    if (dev == null) return NotFound(new { error = "device_not_found" });
+
+    var flag = await _db.Flags.FirstOrDefaultAsync(f => f.Id == flagId);
+    if (flag == null) return NotFound(new { error = "flag_not_found" });
+
+    // Jos laitteella ei ole vielä peliä, sidotaan se lipun peliin
+    if (!dev.GameId.HasValue)
+    {
+        dev.GameId = flag.GameId;
+    }
+    else if (dev.GameId.Value != flag.GameId)
+    {
+        // Estetään ristiin-paritus väärään peliin
+        return Conflict(new { error = "different_game", deviceGameId = dev.GameId, flagGameId = flag.GameId });
+    }
+
+    dev.AssignedFlagId = flag.Id;
+    await _db.SaveChangesAsync();
+
+    // Ilmoita admin- ja julkiselle hubille (valinnainen)
+    await _admin.Clients.All.SendAsync("deviceAssigned", new { deviceId = dev.Id, flagId = flag.Id, gameId = flag.GameId });
+    await _public.Clients.All.SendAsync("deviceAssigned", new { deviceId = dev.Id, flagId = flag.Id, gameId = flag.GameId });
+
+    return Ok(new { ok = true, deviceId = dev.Id, assignedFlagId = dev.AssignedFlagId, gameId = dev.GameId });
+}
+
+// -------- /device/{deviceId}/unassign --------
+[HttpPost("{deviceId:guid}/unassign")]
+public async Task<IActionResult> UnassignFlag(Guid deviceId)
+{
+    var dev = await _db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId);
+    if (dev == null) return NotFound(new { error = "device_not_found" });
+
+    dev.AssignedFlagId = null;
+    await _db.SaveChangesAsync();
+
+    await _admin.Clients.All.SendAsync("deviceUnassigned", new { deviceId = dev.Id, gameId = dev.GameId });
+    await _public.Clients.All.SendAsync("deviceUnassigned", new { deviceId = dev.Id, gameId = dev.GameId });
+
+    return Ok(new { ok = true });
+}
+
+
+
     // -------- /device/heartbeat --------
     public record HeartbeatDto(Guid DeviceId, double? Lat, double? Lon, double? Accuracy);
 
