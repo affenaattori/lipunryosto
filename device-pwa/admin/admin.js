@@ -79,50 +79,88 @@
 
   // --- Create/select game ---
   $('createGame').onclick = async ()=>{
-    if(!state.apiBase){ $('gMsg').textContent='Aseta API-osoite'; return; }
-    const name = $('gName').value.trim();
-    if(!name){ $('gMsg').textContent='Anna pelin nimi'; return; }
-    const capture = parseInt($('gCapture').value||'60',10);
-    const win = $('gWin').value;
-    const timeLimit = parseInt($('gTimeLimit').value||'0',10);
-    const teams = state.teamsDraft.filter(t=>t.name).map(t=>({ name:t.name, color:t.color }));
+  if(!state.apiBase){ $('gMsg').textContent='Aseta API-osoite'; return; }
+  const name = $('gName').value.trim();
+  if(!name){ $('gMsg').textContent='Anna pelin nimi'; return; }
+  const capture = parseInt($('gCapture').value||'60',10);
+  const win = $('gWin').value;
+  const timeLimit = parseInt($('gTimeLimit').value||'0',10);
+  const teams = state.teamsDraft.filter(t=>t.name).map(t=>({ name:t.name, color:t.color }));
 
-    if(teams.length < 2){ $('gMsg').textContent='Vähintään 2 joukkuetta'; return; }
+  if(teams.length < 2){ $('gMsg').textContent='Vähintään 2 joukkuetta'; return; }
 
-    const body = { name, captureTimeSeconds:capture, winCondition:win, timeLimitMinutes: timeLimit>0?timeLimit:null, teams };
-    try{
-      const r = await fetch(api('/games'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-      const txt = await r.text(); if(!r.ok) throw new Error(txt);
-      const g = JSON.parse(txt);
-      state.selectedGameId = g.id || g.Id;
-      $('gameInfo').textContent = `Peli: ${g.name} (${g.status})`;
-      $('gMsg').textContent = 'Peli luotu ja valittu ✓';
-      // nollaa kartta-asetukset tälle pelille
-      loadMapCfg(); // luo tyhjän
-      await reloadGame();
-      await reloadFlags();
-      draw();
-    }catch(e){ $('gMsg').textContent='Virhe: '+(e?.message||e); }
+  // kokeillaan useita muotoja (camel, {dto:{}}, Pascal), koska backend voi vaihdella
+  const camel = { name, captureTimeSeconds:capture, winCondition:win, timeLimitMinutes: timeLimit>0?timeLimit:null, teams };
+  const pascal = {
+    Name:name, CaptureTimeSeconds:capture, WinCondition:win,
+    TimeLimitMinutes: timeLimit>0?timeLimit:null,
+    Teams: teams.map(t=>({ Name:t.name, Color:t.color }))
   };
 
-  function api(path){ return `${state.apiBase.replace(/\/$/,'')}${path}`; }
-
-  async function pickLatestGame(){
-    if(!state.apiBase) return;
-    try{
-      const r = await fetch(api('/games'));
-      const list = await r.json();
-      if(Array.isArray(list) && list.length){
-        // valitaan uusin CreatedAt oletuksena – list on jo ajan mukaan (meidän controllerissa)
-        state.selectedGameId = list[0].id || list[0].Id;
-        $('gameInfo').textContent = `Peli: ${list[0].name || list[0].Name} (${list[0].status})`;
-        await reloadGame();
-        await reloadFlags();
-        loadMapCfg();
-        draw();
-      }
-    }catch{}
+  async function tryPost(payload){
+    const r = await fetch(api('/games'), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const text = await r.text();     // ÄLÄ tee r.json() suoraan
+    return { ok:r.ok, status:r.status, text, location:r.headers.get('Location')||r.headers.get('location') };
   }
+
+  $('gMsg').textContent = 'Luodaan peli…';
+
+  try{
+    let res = await tryPost(camel);
+    if(!res.ok && res.status===400 && /dto/i.test(res.text||'')) res = await tryPost({ dto: camel });
+    if(!res.ok && res.status===400){
+      res = await tryPost(pascal);
+      if(!res.ok && res.status===400) res = await tryPost({ dto: pascal });
+    }
+    if(!res.ok){
+      throw new Error(res.text || `HTTP ${res.status}`);
+    }
+
+    // Yritä jäsentää JSON — jos tyhjä body, hae uusin peli listalta
+    let game;
+    if(res.text && res.text.trim().length>0){
+      try { game = JSON.parse(res.text); } catch { /* jatketaan alla */ }
+    }
+
+    if(!game){
+      // Jos Location-header → yritä hakea se
+      if(res.location){
+        try {
+          const gr = await fetch(res.location);
+          if(gr.ok) game = await gr.json();
+        } catch {}
+      }
+    }
+
+    if(!game){
+      // fallback: hae /games ja ota uusin
+      const lr = await fetch(api('/games'));
+      const list = await lr.json();
+      if(Array.isArray(list) && list.length) game = list[0];
+    }
+
+    if(!game) throw new Error('Pelin luonti onnistui, mutta vastausta ei saatu (tyhjä body).');
+
+    state.selectedGameId = game.id || game.Id;
+    $('gameInfo').textContent = `Peli: ${(game.name||game.Name)} (${game.status||game.Status})`;
+    $('gMsg').textContent = 'Peli luotu ja valittu ✓';
+
+    // nollaa kartta-asetukset tälle pelille + lataa data
+    loadMapCfg();
+    await (async ()=>{ const r = await fetch(api(`/games/${state.selectedGameId}`)); state.gameCache = await r.json(); })();
+    await (async ()=>{ const r = await fetch(api(`/games/${state.selectedGameId}/flags`)); state.flags = await r.json(); })();
+    draw();
+
+    // tyhjennä lomake
+    $('gName').value='';
+  }catch(e){
+    $('gMsg').textContent = 'Virhe: ' + (e?.message||e);
+  }
+};
+
 
   // --- Map config (local) ---
   function cfgKey(){ return `mapcfg_${state.selectedGameId||'none'}`; }
