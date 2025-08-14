@@ -1,116 +1,73 @@
 <!doctype html>
 <html lang="fi">
 <head>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<!-- Leaflet.Draw -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
-<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lipunryöstö — Admin</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lipunryöstö – Admin</title>
   <style>
-    :root{--bg:#0f172a;--card:#111827;--line:#1f2937;--muted:#9ca3af;--accent:#60a5fa;--ok:#34d399;--warn:#f59e0b;--danger:#ef4444}
-    *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:#e5e7eb;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
-    .bar{display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);background:#0b1220;position:sticky;top:0;z-index:10}
-    .pill{padding:4px 10px;border-radius:999px;background:#1f2937;color:#9ca3af;font-size:12px}
-    input,select,button{border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;padding:8px 10px}
+    :root{--bg:#0f172a;--card:#111827;--line:#1f2937;--muted:#9ca3af;--accent:#60a5fa}
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:#e5e7eb;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    .bar{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);background:#0b1220;position:sticky;top:0;z-index:10}
+    .pill{padding:4px 10px;border-radius:999px;background:#1f2937;color:var(--muted);font-size:12px}
+    input,button{border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;padding:8px 10px}
     button{border:0;background:var(--accent);color:#0b1220;font-weight:700;cursor:pointer}
-    .wrap{max-width:1200px;margin:0 auto;padding:14px}
-    .grid{display:grid;grid-template-columns:380px 1fr;gap:14px}
+    .wrap{max-width:1100px;margin:0 auto;padding:14px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    h3{margin:.4rem 0 0.6rem}
     .small{font-size:12px;color:var(--muted)}
-    .btn-ok{background:var(--ok);color:#052e2b} .btn-warn{background:var(--warn);color:#201300} .btn-danger{background:var(--danger);color:#2a0b10}
-    .palette{display:grid;grid-template-columns:repeat(10, 1fr);gap:6px}
-    .swatch{height:26px;border-radius:6px;border:1px solid #0006;cursor:pointer}
-    .swatch.selected{outline:2px solid #e5e7eb}
-    .team-row{display:flex;gap:8px;align-items:center;margin:6px 0}
-    .canvas-wrap{position:relative;height:540px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#0b1220}
-    canvas{display:block;width:100%;height:100%;background:#0b1220}
-    .legend{position:absolute;top:8px;right:8px;background:#111827aa;border:1px solid #1f2937;border-radius:8px;padding:6px}
-    .legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid #0006}
-    .flag-list{max-height:220px;overflow:auto}
-    .chip{display:inline-block;padding:0 8px;height:22px;line-height:22px;border-radius:999px;background:#1f2937;color:#9ca3af;font-size:12px}
+    .list{display:flex;flex-direction:column;gap:8px}
+    .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   </style>
 </head>
 <body>
   <div class="bar">
     <span class="pill">Admin</span>
-    <span class="pill" id="apiInfo">API: –</span>
-    <input id="apiBase" placeholder="https://<api>.azurewebsites.net" style="min-width:360px">
+    <input id="apiBase" placeholder="https://<api>.azurewebsites.net" style="min-width:360px" />
     <button id="saveApi">Tallenna API</button>
-    <span class="pill" id="gameInfo">Peli: –</span>
   </div>
 
   <div class="wrap">
     <div class="grid">
+      <!-- Pelit -->
       <div class="card">
-        <h3>Uusi peli</h3>
-        <div class="row">
-          <input id="gName" placeholder="Pelin nimi" style="flex:1">
-          <label>Valtausaika (s)</label><input id="gCapture" type="number" min="5" value="60" style="width:110px">
+        <h3>Pelit</h3>
+        <div class="small">Valitse olemassa oleva peli tai luo uusi.</div>
+        <div class="row" style="margin:8px 0 12px">
+          <button id="createGame">Luo peli</button>
         </div>
+        <div id="gameList" class="list"></div>
+        <hr style="border-color:#1f2937;margin:14px 0" />
         <div class="row">
-          <label>Voittosääntö</label>
-          <select id="gWin">
-            <option value="MostPointsAtTime">Eniten pisteitä aikarajassa</option>
-            <option value="AllFlagsOneTeam">Kaikki liput yhdellä</option>
-          </select>
-          <label>Aikaraja (min)</label><input id="gTimeLimit" type="number" min="0" value="0" style="width:110px">
+          <strong id="selectedGame">Peli ID: –</strong>
         </div>
-        <h4 style="margin-top:10px">Joukkueet (värit paletista)</h4>
-        <div id="teamsWrap"></div>
-        <div class="row">
-          <button id="addTeam">Lisää joukkue</button>
-          <button id="createGame">Luo ja valitse peli</button>
-          <span id="gMsg" class="small"></span>
-        </div>
-
-        <hr style="border-color:#1f2937;margin:14px 0">
-        
-        <hr style="border-color:#1f2937;margin:14px 0">
-        <h3>Pelin ohjaus</h3>
-        <div class="row">
-          <button class="btn-ok" id="startGame">Käynnistä peli</button>
-          <button class="btn-warn" id="pauseGame">Pysäytä (pause)</button>
-          <button class="btn-danger" id="endGame">Lopeta peli</button>
-          <span id="ctrlMsg" class="small"></span>
-        </div>
-
-        <hr style="border-color:#1f2937;margin:14px 0">
-<h3>Kenttälinkit (A–J)</h3>
-<div class="small" style="margin-bottom:6px">
-  Linkit lippupisteiden aktivointiin laitteilla. API-osoite haetaan yläpalkin kentästä.
-</div>
-<div id="fieldLinks"></div>
-
-        <hr style="border-color:#1f2937;margin:14px 0">
-        <h3>Liput</h3>
-        <div class="row">
-          <button id="normalize">Normalisoi A…J</button>
-          <button id="refreshFlags">Päivitä</button>
-        </div>
-        <div id="flagsList" class="flag-list"></div>
       </div>
 
+      <!-- Joukkueet -->
       <div class="card">
-  <h3>Yleiskuva (Leaflet-kartta)</h3>
+        <h3>Joukkueet</h3>
+        <div class="small">Lisää joukkueita valittuun peliin.</div>
+        <div class="row" style="margin:8px 0 12px">
+          <button id="addTeam">Lisää joukkue</button>
+        </div>
+        <div id="teamList" class="list"></div>
+      </div>
 
-  <div class="row" style="margin-bottom:8px">
-    <button id="enableDraw">Piirrä alueen raja</button>
-    <button id="saveArea" class="btn-ok">Tallenna alue</button>
-    <button id="clearArea" class="btn-danger">Tyhjennä alue</button>
-    <span id="areaMsg" class="small"></span>
+      <!-- Kenttälinkit (A–J) -->
+      <div class="card" style="grid-column:1 / span 2">
+        <h3>Kenttälinkit (A–J)</h3>
+        <div class="small" style="margin-bottom:6px">
+          Linkit lippupisteiden aktivointiin. Aukeavat <code>/device</code>-sivulle valmiilla parametreilla.
+        </div>
+        <div id="fieldLinks" class="list" style="margin-bottom:10px"></div>
+        <div class="row">
+          <button id="copyAllLinks">Kopioi kaikki linkit</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div id="leafletMap" style="height:540px;border-radius:12px;overflow:hidden;border:1px solid #1f2937"></div>
-  <div class="small" style="margin-top:6px">Kartta: © OpenStreetMap -tekijät • Attribuutio vaaditaan</div>
-</div>
-
-
-<script src="./admin.js"></script>
+  <script src="./admin.js"></script>
 </body>
 </html>
