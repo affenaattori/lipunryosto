@@ -1,24 +1,19 @@
-// register.js
-async function registerDevice(apiBase, gameId, flagSlug, name) {
-    const res = await fetch(`${apiBase}/device/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            gameId: gameId,
-            flagSlug: flagSlug,
-            name: name
-        })
-    });
+// register.js — yksittäinen helper rekisteröintiin
+async function registerDevice(apiBase, gameId, flagSlug, name){
+  if(!apiBase) throw new Error('API-osoite puuttuu');
+  const url = apiBase.replace(/\/$/,'') + '/device/register';
+  const body = { gameId, flagSlug, name: (name||null) };
 
-    if (!res.ok) {
-        const err = await res.text();
-        throw new Error(`Registration failed: ${err}`);
-    }
+  const r = await fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
 
-    const data = await res.json();
-    localStorage.setItem("deviceId", data.deviceId);
-    localStorage.setItem("flagId", data.flagId);
-    localStorage.setItem("flagSlug", data.flagSlug);
-    console.log("Registered device", data);
-    return data;
+  const txt = await r.text();
+  if(!r.ok) throw new Error(txt || ('HTTP '+r.status));
+
+  // voi olla tyhjäkin → yritä jäsentää, muuten palauta minimi
+  if(!txt.trim()) return { ok:true };
+  try { return JSON.parse(txt); } catch { return { ok:true }; }
 }
