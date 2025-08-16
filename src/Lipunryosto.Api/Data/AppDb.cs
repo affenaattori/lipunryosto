@@ -3,24 +3,29 @@ using Lipunryosto.Api.Models;
 
 namespace Lipunryosto.Api.Data
 {
-    public class AppDb : DbContext
+    public partial class AppDb : DbContext
     {
         public AppDb(DbContextOptions<AppDb> options) : base(options) { }
 
-        public DbSet<Game> Games { get; set; }
-        public DbSet<Team> Teams { get; set; }
-        public DbSet<FlagPoint> Flags { get; set; }
-        public DbSet<Device> Devices { get; set; }
-        public DbSet<CaptureEvent> Events { get; set; }
+        // DbSets
+        public DbSet<Game> Games => Set<Game>();
+        public DbSet<Team> Teams => Set<Team>();
+        public DbSet<FlagPoint> Flags => Set<FlagPoint>();
+        public DbSet<Device> Devices => Set<Device>();
+        public DbSet<CaptureEvent> Events => Set<CaptureEvent>();
+        public DbSet<GameArea> Areas => Set<GameArea>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Yksi peli – uniikki GameId flagille
-            modelBuilder.Entity<FlagPoint>()
-                .HasIndex(f => new { f.GameId, f.Name })
+            // Yksi peli = yksi pelialue (uniikki GameId)
+            modelBuilder.Entity<GameArea>()
+                .HasIndex(x => x.GameId)
                 .IsUnique();
+
+            // Huom: jos sinulla on toinen partial-luokka, jossa on myös OnModelCreating,
+            // pidä indeksit yhdessä paikassa tai yhdistä ne, jotta ei tule ristiriitoja.
         }
     }
 }
