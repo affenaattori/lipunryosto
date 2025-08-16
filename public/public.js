@@ -44,10 +44,12 @@
     try{
       const feat = await fetchJson(api(`/games/${gameId}/area`));
       if(!feat || !feat.geometry || feat.geometry.type!=='Polygon') return;
-      // GeoJSON käyttää [lon,lat] – muutetaan Leafletiin [lat,lon]
+
+      const color = (feat.properties && feat.properties.color) ? feat.properties.color : '#f59e0b';
       const pts = (feat.geometry.coordinates?.[0]||[]).map(([lon,lat])=>[lat,lon]);
+
       if(areaLayer){ map.removeLayer(areaLayer); areaLayer=null; }
-      areaLayer = L.polygon(pts, { color:'#60a5fa', weight:2, fillOpacity:0.08 }).addTo(map);
+      areaLayer = L.polygon(pts, { color, weight:3, fillOpacity:0.12, dashArray:'6,4' }).addTo(map);
       map.fitBounds(areaLayer.getBounds().pad(0.2));
     }catch(e){
       // 404 = ei tallennettua aluetta → ei virheilmoitusta
@@ -101,7 +103,7 @@
   (async function init(){
     try{
       await pickLatestGame();
-      await loadArea();       // <-- piirrä pelialue, jos tallennettu
+      await loadArea();       // ← piirrä pelialue valitulla värillä
       await loadAndRender();
       setInterval(loadAndRender, 5000);
     }catch(e){
