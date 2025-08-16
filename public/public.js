@@ -41,7 +41,19 @@
       throw new Error('Pelejä ei löytynyt (adminissa luotava peli).');
     }
   }
+  
+async function loadArea(){
+  try{
+    const feat = await fetchJson(api(`/games/${gameId}/area`));
+    if(feat && feat.geometry && feat.geometry.type==='Polygon'){
+      const pts = (feat.geometry.coordinates?.[0]||[]).map(([lon,lat])=>[lat,lon]);
+      const poly = L.polygon(pts, { color:'#60a5fa', weight:2, fillOpacity:0.08 }).addTo(map);
+      map.fitBounds(poly.getBounds().pad(0.2));
+    }
+  }catch{}
+}
 
+  
   async function loadAndRender(){
     clearErr();
     if(!gameId) return;
