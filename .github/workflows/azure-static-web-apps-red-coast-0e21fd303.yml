@@ -21,3 +21,4 @@ jobs:
           output_location: ""            # ei build-kansiota
           skip_app_build: true           # ei npm buildia
           deployment_action: "upload"    # pakota upload
+
