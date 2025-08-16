@@ -13,7 +13,8 @@ const state = {
   areaPolyline: null,
   areaPolygon: null,
   drawing: false,
-  areaPoints: []             // [[lat,lon], ...]
+  areaPoints: [],            // [[lat,lon], ...]
+  areaColor: "#f59e0b"
 };
 
 const colors = [
@@ -24,7 +25,7 @@ const colors = [
 ];
 
 const $ = (id)=>document.getElementById(id);
-const esc = (s)=> (s??'').toString().replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;' }[c]));
+const esc = (s)=> (s??'').toString().replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
 // toast
 function ensureToast(){
@@ -150,8 +151,8 @@ function selectGame(id){
   setControlButtonStates();
   reloadTeams();
   renderFieldLinks();
-  // lataa aluekartta
-  initMapOnce(); loadAreaFromApiOrLocal();
+  initMapOnce();
+  loadAreaFromApiOrLocal();
 }
 
 async function reloadGameBadge(){
@@ -249,7 +250,6 @@ function setControlButtonStates(){
   const st = state.gameStatus;
   const start = $('startGame'), pause=$('pauseGame'), end=$('endGame');
   if(!start||!pause||!end) return;
-  // oletukset
   start.disabled = false; pause.disabled=false; end.disabled=false;
 
   if(st==='live'){
@@ -295,7 +295,6 @@ function renderFieldLinks(){
     row.appendChild(a); row.appendChild(btn);
     list.appendChild(row);
   }
-  // Public-linkki
   const publicRow = document.createElement('div');
   publicRow.className='row';
   const pubUrl = `${location.origin}/public/?api=${encodeURIComponent(state.apiBase)}`;
@@ -320,7 +319,6 @@ async function copyAllLinks(){
 // ================== Leaflet map & area drawing ==================
 function initMapOnce(){
   if(state.map || !$('adminMap')) return;
-  // Leaflet script/stylesheet on publicissa — adminiin käytämme samaa CDN:ää:
   const css = document.createElement('link');
   css.rel='stylesheet'; css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
   document.head.appendChild(css);
@@ -334,19 +332,26 @@ function initMapOnce(){
     state.markers = L.layerGroup().addTo(state.map);
     state.map.setView([60.1699, 24.9384], 12);
 
-    // klikkaus lisää pisteen jos piirto päällä
     state.map.on('click', e=>{
       if(!state.drawing) return;
       state.areaPoints.push([e.latlng.lat, e.latlng.lng]);
       redrawArea();
     });
 
-    // nappien kuuntelut
     const btnStart = $('btnStartDraw'), btnUndo=$('btnUndo'), btnClear=$('btnClear'), btnSave=$('btnSaveArea');
     if(btnStart) btnStart.onclick = toggleDraw;
     if(btnUndo) btnUndo.onclick = undoPoint;
     if(btnClear) btnClear.onclick = clearArea;
     if(btnSave) btnSave.onclick = saveArea;
+
+    const col = $('areaColor');
+    if(col){
+      col.value = state.areaColor;
+      col.addEventListener('input', ()=>{
+        state.areaColor = col.value || '#f59e0b';
+        redrawArea();
+      });
+    }
   };
   document.body.appendChild(js);
 }
@@ -370,14 +375,19 @@ function clearArea(){
 
 function redrawArea(){
   if(!state.map) return;
+  const color = state.areaColor || '#f59e0b';
   if(state.areaPolyline){ state.map.removeLayer(state.areaPolyline); state.areaPolyline=null; }
   if(state.areaPolygon){ state.map.removeLayer(state.areaPolygon); state.areaPolygon=null; }
 
   if(state.areaPoints.length>=2){
-    state.areaPolyline = L.polyline(state.areaPoints, { color:'#60a5fa', weight:3 }).addTo(state.map);
+    state.areaPolyline = L.polyline(state.areaPoints, {
+      color, weight:3, dashArray:'6,4'
+    }).addTo(state.map);
   }
   if(state.areaPoints.length>=3){
-    state.areaPolygon = L.polygon(state.areaPoints, { color:'#60a5fa', weight:2, fillOpacity:0.1 }).addTo(state.map);
+    state.areaPolygon = L.polygon(state.areaPoints, {
+      color, weight:3, fillOpacity:0.12
+    }).addTo(state.map);
     const b = L.latLngBounds(state.areaPoints.map(p=>({lat:p[0],lng:p[1]})));
     state.map.fitBounds(b.pad(0.2));
   }
@@ -387,16 +397,17 @@ async function saveArea(){
   if(!state.gameId){ toast('Valitse peli ensin', false); return; }
   if(state.areaPoints.length<3){ toast('Piirrä vähintään 3 pistettä', false); return; }
 
+  const color = state.areaColor || '#f59e0b';
   const geojson = {
     type: "Feature",
-    properties: { kind: "game-area" },
+    properties: { kind: "game-area", color },
     geometry: { type: "Polygon", coordinates: [ state.areaPoints.map(p=>[p[1], p[0]]) ] } // [lon,lat]
   };
 
-  // tallenna localStorageen aina (fallback)
+  // talleta paikallisesti (fallback)
   localStorage.setItem(`area:${state.gameId}`, JSON.stringify(geojson));
 
-  // yritä APIa (GET/PUT /games/{id}/area) – ei kaaduta, jos ei ole implementoitu
+  // yritä API: PUT /games/{id}/area
   try{
     await fetchJsonSafe(api(`/games/${state.gameId}/area`),{
       method:'PUT',
@@ -405,16 +416,21 @@ async function saveArea(){
     });
     toast('Alue tallennettu (API) ✓');
   }catch{
-    toast('Alue tallennettu vain paikallisesti (API puuttuu) ✓');
+    toast('Alue tallennettu paikallisesti (API puuttuu) ✓');
   }
 }
 
 async function loadAreaFromApiOrLocal(){
-  if(!state.gameId || !state.map) return;
+  if(!state.gameId) return;
   // 1) API
   try{
     const feat = await fetchJsonSafe(api(`/games/${state.gameId}/area`));
     if(feat && feat.geometry && feat.geometry.type==='Polygon'){
+      // tallenna väri UI:hin
+      const colorFromApi = feat.properties?.color || '#f59e0b';
+      state.areaColor = colorFromApi;
+      const col = $('areaColor'); if(col) col.value = state.areaColor;
+
       state.areaPoints = (feat.geometry.coordinates?.[0]||[]).map(([lon,lat])=>[lat,lon]);
       redrawArea();
       return;
@@ -426,6 +442,9 @@ async function loadAreaFromApiOrLocal(){
     if(raw){
       const feat = JSON.parse(raw);
       if(feat && feat.geometry && feat.geometry.type==='Polygon'){
+        state.areaColor = feat.properties?.color || '#f59e0b';
+        const col = $('areaColor'); if(col) col.value = state.areaColor;
+
         state.areaPoints = (feat.geometry.coordinates?.[0]||[]).map(([lon,lat])=>[lat,lon]);
         redrawArea();
         return;
@@ -434,6 +453,8 @@ async function loadAreaFromApiOrLocal(){
   }catch{ /* ignore */ }
   // default: tyhjä
   state.areaPoints = [];
+  state.areaColor = '#f59e0b';
+  const col = $('areaColor'); if(col) col.value = state.areaColor;
   redrawArea();
 }
 
