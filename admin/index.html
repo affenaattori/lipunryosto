@@ -30,6 +30,8 @@
     /* Modal */
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center}
     .modal>.box{background:#0b1220;border:1px solid #374151;border-radius:12px;padding:16px;min-width:320px}
+    /* Color input */
+    input[type="color"]{padding:0;width:48px;height:36px;border-radius:8px;border:1px solid #374151;background:#0b1220}
   </style>
 </head>
 <body>
@@ -94,22 +96,24 @@
         </div>
         <div id="teamList" class="list" style="margin-top:10px"></div>
       </div>
-      
-<!-- Lippupisteet & pelialue (kartta) -->
-<div class="card" style="grid-column:1 / span 2">
-  <h3>Lippupisteet & pelialue</h3>
-  <div id="adminMap" style="height:420px;border-radius:12px;overflow:hidden;border:1px solid #1f2937"></div>
-  <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
-    <button id="btnStartDraw">Piirrä alue</button>
-    <button id="btnUndo" class="btn-ghost">Peru piste</button>
-    <button id="btnClear" class="btn-danger">Tyhjennä</button>
-    <button id="btnSaveArea" class="btn-ghost">Tallenna alue</button>
-    <button id="openPublic" class="btn-ghost" onclick="window.open(`${location.origin}/public/?api=${encodeURIComponent(localStorage.getItem('admin_apiBase')||'')}`,'_blank')">Avaa Public</button>
-  </div>
-  <div class="small">Klikkaa karttaa lisätäksesi pisteen. Vähintään 3 pistettä muodostaa alueen. “Tallenna alue” yrittää tallettaa API:in <code>/games/{id}/area</code> (jos olemassa); aina tallettaa varmuuskopion paikallisesti.</div>
-</div>
 
-      <!-- Kenttälinkit -->
+      <!-- Lippupisteet & pelialue (kartta) -->
+      <div class="card" style="grid-column:1 / span 2">
+        <h3>Lippupisteet & pelialue</h3>
+        <div id="adminMap" style="height:420px;border-radius:12px;overflow:hidden;border:1px solid #1f2937"></div>
+        <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap;align-items:center">
+          <button id="btnStartDraw">Piirrä alue</button>
+          <button id="btnUndo" class="btn-ghost">Peru piste</button>
+          <button id="btnClear" class="btn-danger">Tyhjennä</button>
+          <button id="btnSaveArea" class="btn-ghost">Tallenna alue</button>
+          <span class="small">Alueen väri</span>
+          <input id="areaColor" type="color" value="#f59e0b" title="Alueen väri">
+          <button id="openPublic" class="btn-ghost" onclick="window.open(`${location.origin}/public/?api=${encodeURIComponent(localStorage.getItem('admin_apiBase')||'')}`,'_blank')">Avaa Public</button>
+        </div>
+        <div class="small">Klikkaa karttaa lisätäksesi pisteen (piirtotilassa). Vähintään 3 pistettä muodostaa alueen. “Tallenna alue” tallentaa <code>/games/{id}/area</code>, jossa <code>properties.color</code> sisältää valitun värin.</div>
+      </div>
+
+      <!-- Kenttälinkit (A–J) -->
       <div class="card" style="grid-column:1 / span 2">
         <h3>Kenttälinkit (A–J)</h3>
         <div class="small" style="margin-bottom:6px">
