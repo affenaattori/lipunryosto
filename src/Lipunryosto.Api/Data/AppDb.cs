@@ -13,6 +13,15 @@ namespace Lipunryosto.Api.Data
         public DbSet<Device> Devices => Set<Device>();
         public DbSet<CaptureEvent> Events => Set<CaptureEvent>();
         public DbSet<Lipunryosto.Api.Models.GameArea> Areas => Set<Lipunryosto.Api.Models.GameArea>();
+        
+ protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // 🔽 TÄHÄN voi laittaa uniikki-indeksin
+        modelBuilder.Entity<GameArea>()
+            .HasIndex(x => x.GameId)
+            .IsUnique();
 
     }
 }
