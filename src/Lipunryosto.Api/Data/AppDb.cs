@@ -1,27 +1,26 @@
-using Lipunryosto.Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Lipunryosto.Api.Models;
 
 namespace Lipunryosto.Api.Data
 {
-    public partial class AppDb : DbContext
+    public class AppDb : DbContext
     {
         public AppDb(DbContextOptions<AppDb> options) : base(options) { }
 
-        public DbSet<Game> Games => Set<Game>();
-        public DbSet<Team> Teams => Set<Team>();
-        public DbSet<FlagPoint> Flags => Set<FlagPoint>();
-        public DbSet<Device> Devices => Set<Device>();
-        public DbSet<CaptureEvent> Events => Set<CaptureEvent>();
-        public DbSet<Lipunryosto.Api.Models.GameArea> Areas => Set<Lipunryosto.Api.Models.GameArea>();
-        
- protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
+        public DbSet<Game> Games { get; set; }
+        public DbSet<Team> Teams { get; set; }
+        public DbSet<FlagPoint> Flags { get; set; }
+        public DbSet<Device> Devices { get; set; }
+        public DbSet<CaptureEvent> Events { get; set; }
 
-        // 🔽 TÄHÄN voi laittaa uniikki-indeksin
-        modelBuilder.Entity<GameArea>()
-            .HasIndex(x => x.GameId)
-            .IsUnique();
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
 
+            // Yksi peli – uniikki GameId flagille
+            modelBuilder.Entity<FlagPoint>()
+                .HasIndex(f => new { f.GameId, f.Name })
+                .IsUnique();
+        }
     }
 }
