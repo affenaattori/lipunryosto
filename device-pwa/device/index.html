@@ -21,7 +21,7 @@
   <div class="wrap">
     <h2>Lippupiste</h2>
     <div id="ctx" class="pill">–</div>
-    <div class="muted">Täytä API-osoite ja lipun kirjain (A..J). Paina “Aktivoi lippu”, sitten “Käynnistä GPS”.</div>
+    <div id="msg" class="muted">Täytä API-osoite ja lipun kirjain (A..J). Paina “Aktivoi lippu”, sitten “Käynnistä GPS”.</div>
 
     <input id="api" placeholder="API URL (https://<api>.azurewebsites.net)">
     <div class="row">
@@ -34,14 +34,6 @@
     <div class="row">
       <button id="startHb" class="secondary">Käynnistä GPS heartbeat</button>
       <button id="stopHb" class="warn">Pysäytä heartbeat</button>
-    </div>
-
-    <div id="msg" class="muted"></div>
-
-    <hr style="border-color:#1f2937;margin:16px 0">
-    <div class="muted">
-      Vinkki: voit esitäyttää URL-parametreilla:<br>
-      <code>?api=https://...azurewebsites.net&flag=A</code>
     </div>
   </div>
 
