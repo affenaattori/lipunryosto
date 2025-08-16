@@ -3,7 +3,8 @@ const state = {
   apiBase: null,
   games: [],
   gameId: null,
-  teams: [],
+  teams: [],          // palvelusta haetut tiimit (kun peli on valittuna)
+  preTeams: [],       // TIETOA: pelin esiluontiin kerättävät tiimit (ennen kuin peli on olemassa)
   selectedColor: "#3B82F6"
 };
 
@@ -26,7 +27,7 @@ async function fetchJsonSafe(url, init){
   try { return JSON.parse(txt); } catch { return null; }
 }
 
-// ======== UI: palette, modal, notif ========
+// ======== UI: palette, modal ========
 function buildPalette(){
   const host = $('palette'); host.innerHTML='';
   colors.forEach(c=>{
@@ -52,6 +53,9 @@ async function loadGames(){
   renderGameSelect();
   if(!state.gameId && state.games.length){
     selectGame(state.games[0].id || state.games[0].Id);
+  } else {
+    // jos peliä ei ole valittuna, näytä esiluontitiimit
+    renderTeams();
   }
 }
 
@@ -77,29 +81,39 @@ async function createGame(){
   const useMax = $('gUseMax').checked;
   const maxPoints = useMax ? Number($('gMax').value)||0 : null;
 
+  // käytä ESILUONTI-tiimejä (vaaditaan vähintään 2)
+  if (state.preTeams.length < 2) {
+    alert('Lisää vähintään 2 joukkuetta ennen pelin luontia.');
+    return;
+  }
+
   const body = {
     name, captureTimeSeconds, winCondition,
     timeLimitMinutes, maxPoints,
-    teams: [] // luodaan tiimit erikseen
+    teams: state.preTeams.map(t=>({ name:t.name, color:t.color }))
   };
 
-  const res = await fetchJsonSafe(api('/games'),{
+  const created = await fetchJsonSafe(api('/games'),{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify(body)
   });
 
-  // fallback: jos API palauttaa location mutta ei bodya
-  let created = res;
   if(!created || !created.id){
+    // fallback: hae listasta
     const list = await fetchJsonSafe(api('/games')) || [];
-    created = Array.isArray(list) && list.length ? list[0] : null;
+    if(Array.isArray(list) && list.length){
+      selectGame(list[0].id || list[0].Id);
+    }
+  } else {
+    await loadGames();
+    selectGame(created.id);
   }
-  if(!created){ alert('Pelin luonti epäonnistui'); return; }
 
-  await loadGames();
-  selectGame(created.id || created.Id);
+  // tyhjennä lomake & esiluontitiimit
   $('gName').value = '';
+  state.preTeams = [];
+  renderTeams();
 }
 
 function selectGame(id){
@@ -119,7 +133,7 @@ async function reloadGameBadge(){
 
 // ======== Teams ========
 async function reloadTeams(){
-  if(!state.gameId) { $('teamList').innerHTML=''; return; }
+  if(!state.gameId) { renderTeams(); return; }
   const data = await fetchJsonSafe(api(`/games/${state.gameId}/teams`)) || [];
   state.teams = Array.isArray(data) ? data : [];
   renderTeams();
@@ -127,8 +141,15 @@ async function reloadTeams(){
 
 function renderTeams(){
   const host = $('teamList'); host.innerHTML='';
-  if(!state.teams.length){ host.innerHTML='<div class="small">Ei joukkueita.</div>'; return; }
-  state.teams.forEach(t=>{
+  const isPreCreate = !state.gameId; // ei valittua peliä → esiluontitila
+
+  const list = isPreCreate ? state.preTeams : state.teams;
+  if(!list.length){
+    host.innerHTML = `<div class="small">${isPreCreate ? 'Ei esiluontijoukkueita.' : 'Ei joukkueita.'}</div>`;
+    return;
+  }
+
+  list.forEach(t=>{
     const row = document.createElement('div');
     row.className='team';
     const sw = document.createElement('div');
@@ -142,10 +163,19 @@ function renderTeams(){
 }
 
 async function addTeam(){
-  if(!state.gameId) return alert('Valitse peli ensin');
   const name = $('teamName').value.trim();
   if(!name) return alert('Anna joukkueen nimi');
   const color = state.selectedColor;
+
+  if(!state.gameId){
+    // esiluontitila: lisää muistiin
+    state.preTeams.push({ name, color });
+    $('teamName').value='';
+    renderTeams();
+    return;
+  }
+
+  // peli valittuna: lähetä API:lle
   await fetchJsonSafe(api(`/games/${state.gameId}/teams`),{
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ name, color })
@@ -187,7 +217,7 @@ function renderFieldLinks(){
 }
 
 async function copyAllLinks(){
-  if(!state.apiBase || !state.gameId) return;
+  if(!state.apiBase) return;
   let all='';
   for(let i=0;i<10;i++){
     const L = String.fromCharCode(65+i);
@@ -198,7 +228,7 @@ async function copyAllLinks(){
   alert('Kaikki linkit kopioitu');
 }
 
-// ======== Init ========
+// ======== Init & wiring ========
 function deriveApi(){
   const qs = new URLSearchParams(location.search);
   const fromQs = (qs.get('api')||'').trim();
@@ -238,7 +268,7 @@ async function safeCall(fn){
 
 async function bootAfterApi(){
   if(!state.apiBase){ openModal(); return; }
-  $('apiBase').value = state.apiBase;   // asetukset-modalissa näkyy nykyinen
+  $('apiBase').value = state.apiBase;
   await loadGames();
   renderFieldLinks();
 }
