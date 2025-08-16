@@ -3,15 +3,21 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// CORS (salli SWA:n domaini)
-var swa = builder.Configuration["SWA_ORIGIN"]; // esim. https://red-coast-...azurestaticapps.net
+// CORS: salli SWA-origin
+var swaOrigin = builder.Configuration["SWA_ORIGIN"]; // esim. https://red-coast-0e21fd303.2.azurestaticapps.net
 builder.Services.AddCors(opt =>
 {
     opt.AddDefaultPolicy(p =>
-        p.WithOrigins(swa ?? "*")
-         .AllowAnyHeader()
-         .AllowAnyMethod());
+        p.WithOrigins(
+            swaOrigin ?? "https://red-coast-0e21fd303.2.azurestaticapps.net" // vaihda omaan SWA-osoitteeseesi
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod());
 });
+...
+var app = builder.Build();
+app.UseCors();
+
 
 // InMemory toggle
 var useInMemory = (builder.Configuration["USE_INMEMORY"] ?? "").ToLowerInvariant() == "true";
