@@ -8,62 +8,116 @@
     :root{--bg:#0f172a;--card:#111827;--line:#1f2937;--muted:#9ca3af;--accent:#60a5fa}
     *{box-sizing:border-box}
     html,body{margin:0;background:var(--bg);color:#e5e7eb;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
-    .bar{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);background:#0b1220;position:sticky;top:0;z-index:10}
+    .bar{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);background:#0b1220;position:sticky;top:0;z-index:10}
+    .title{display:flex;align-items:center;gap:10px}
     .pill{padding:4px 10px;border-radius:999px;background:#1f2937;color:var(--muted);font-size:12px}
-    input,button{border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;padding:8px 10px}
-    button{border:0;background:var(--accent);color:#0b1220;font-weight:700;cursor:pointer}
+    .iconbtn{border:1px solid #374151;background:#0b1220;color:#e5e7eb;border-radius:10px;padding:8px 10px;cursor:pointer}
     .wrap{max-width:1100px;margin:0 auto;padding:14px}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
     h3{margin:.4rem 0 0.6rem}
     .small{font-size:12px;color:var(--muted)}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    input,select,button{border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;padding:8px 10px}
+    button{border:0;background:var(--accent);color:#0b1220;font-weight:700;cursor:pointer}
+    .btn-ghost{background:#1f2937;color:#e5e7eb;border:1px solid #374151}
+    .btn-warn{background:#f59e0b;color:#1f1300}
+    .btn-danger{background:#ef4444;color:#16070a}
     .list{display:flex;flex-direction:column;gap:8px}
-    .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .chip{width:22px;height:22px;border-radius:6px;border:1px solid #111;cursor:pointer}
+    .chip.sel{outline:2px solid #e5e7eb}
+    .team{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #1f2937;border-radius:10px}
+    /* Modal */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center}
+    .modal>.box{background:#0b1220;border:1px solid #374151;border-radius:12px;padding:16px;min-width:320px}
   </style>
 </head>
 <body>
   <div class="bar">
-    <span class="pill">Admin</span>
-    <input id="apiBase" placeholder="https://<api>.azurewebsites.net" style="min-width:360px" />
-    <button id="saveApi">Tallenna API</button>
+    <div class="title">
+      <span class="pill">Admin</span>
+      <span id="gameBadge" class="pill">Peli: –</span>
+    </div>
+    <div class="row">
+      <button id="openSettings" class="iconbtn">⚙️ Asetukset</button>
+    </div>
   </div>
 
   <div class="wrap">
     <div class="grid">
-      <!-- Pelit -->
+      <!-- Pelin asetukset & ohjaus -->
       <div class="card">
-        <h3>Pelit</h3>
-        <div class="small">Valitse olemassa oleva peli tai luo uusi.</div>
-        <div class="row" style="margin:8px 0 12px">
-          <button id="createGame">Luo peli</button>
+        <h3>Pelin asetukset</h3>
+        <div class="small">Luo uusi peli tai valitse olemassa oleva. Voit muokata asetukset ennen luontia.</div>
+        <div class="row" style="margin-top:8px">
+          <input id="gName" placeholder="Pelin nimi" style="flex:2;min-width:220px">
+          <input id="gCapture" type="number" min="5" step="5" value="60" style="width:120px" title="Valtausaika (s)">
+          <select id="gWin" style="min-width:220px">
+            <option value="MostPointsAtTime">Voitto: eniten pisteitä ajan päättyessä</option>
+            <option value="AllFlagsOwned">Voitto: kaikki liput samalla joukkueella</option>
+          </select>
         </div>
-        <div id="gameList" class="list"></div>
-        <hr style="border-color:#1f2937;margin:14px 0" />
         <div class="row">
-          <strong id="selectedGame">Peli ID: –</strong>
+          <label class="row" style="align-items:center">
+            <input id="gUseTime" type="checkbox">
+            <span class="small">Aikaraja (min)</span>
+            <input id="gTime" type="number" min="1" step="1" value="30" style="width:100px">
+          </label>
+          <label class="row" style="align-items:center">
+            <input id="gUseMax" type="checkbox">
+            <span class="small">Maksimi pisteet</span>
+            <input id="gMax" type="number" min="1" step="1" value="100" style="width:100px">
+          </label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="createGame">Luo peli</button>
+          <select id="gameSelect" style="min-width:280px"></select>
+          <button id="refreshGames" class="btn-ghost">Päivitä pelit</button>
+        </div>
+        <hr style="border-color:#1f2937;margin:14px 0">
+        <h3>Pelin ohjaus</h3>
+        <div class="row">
+          <button id="startGame">Käynnistä</button>
+          <button id="pauseGame" class="btn-warn">Tauko</button>
+          <button id="endGame" class="btn-danger">Lopeta</button>
         </div>
       </div>
 
       <!-- Joukkueet -->
       <div class="card">
         <h3>Joukkueet</h3>
-        <div class="small">Lisää joukkueita valittuun peliin.</div>
-        <div class="row" style="margin:8px 0 12px">
+        <div class="small">Valitse väri paletista ja anna nimi.</div>
+        <div class="row" id="palette" style="margin:8px 0;flex-wrap:wrap"></div>
+        <div class="row">
+          <input id="teamName" placeholder="Joukkueen nimi" style="flex:2;min-width:220px">
           <button id="addTeam">Lisää joukkue</button>
         </div>
-        <div id="teamList" class="list"></div>
+        <div id="teamList" class="list" style="margin-top:10px"></div>
       </div>
 
-      <!-- Kenttälinkit (A–J) -->
+      <!-- Kenttälinkit -->
       <div class="card" style="grid-column:1 / span 2">
         <h3>Kenttälinkit (A–J)</h3>
         <div class="small" style="margin-bottom:6px">
-          Linkit lippupisteiden aktivointiin. Aukeavat <code>/device</code>-sivulle valmiilla parametreilla.
+          Linkit lippupisteiden aktivointiin laitteissa. (Avaa / Kopioi)
         </div>
         <div id="fieldLinks" class="list" style="margin-bottom:10px"></div>
         <div class="row">
-          <button id="copyAllLinks">Kopioi kaikki linkit</button>
+          <button id="copyAllLinks" class="btn-ghost">Kopioi kaikki</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Asetukset-modal (API base) -->
+  <div id="modal" class="modal">
+    <div class="box">
+      <h3>Asetukset</h3>
+      <div class="small">Anna API-osoite (App Service), esim. https://…azurewebsites.net</div>
+      <input id="apiBase" placeholder="https://<api>.azurewebsites.net" style="width:100%;margin-top:8px">
+      <div class="row" style="margin-top:10px;justify-content:flex-end">
+        <button id="closeSettings" class="btn-ghost">Peruuta</button>
+        <button id="saveApi">Tallenna</button>
       </div>
     </div>
   </div>
