@@ -2,7 +2,6 @@
   const $ = id => document.getElementById(id);
   const qs = new URLSearchParams(location.search);
 
-  // Esitäytä kentät URL-parametreista tai localStoragesta
   $('api').value      = (qs.get('api') || localStorage.getItem('dev_api') || '').replace(/\/$/,'');
   $('flagSlug').value = (qs.get('flag') || localStorage.getItem('dev_flag') || '');
   $('name').value     = (localStorage.getItem('dev_name') || '');
@@ -38,7 +37,6 @@
     try { return JSON.parse(txt); } catch { return null; }
   }
 
-  // Hae uusin peli jos gameId puuttuu (emme näytä kenttää, logiikka hoitaa)
   async function ensureGameId(){
     if (pickedGameId) return pickedGameId;
     say('Haetaan uusin peli…');
@@ -51,7 +49,6 @@
     throw new Error('Pelejä ei löytynyt. Luo peli admin-portaalissa.');
   }
 
-  // Aktivoi lippu (slug A..J)
   $('activate').onclick = async ()=>{
     try{
       const base = $('api').value.trim();
@@ -68,7 +65,6 @@
       localStorage.setItem('dev_name', name);
 
       const res = await registerDevice(base, gid, slug, name);
-      // odotettu vastemuoto: { deviceId, flagId, flagSlug, gameId }
       if (res?.deviceId) {
         device.id = res.deviceId;
         localStorage.setItem('deviceId', device.id);
@@ -81,7 +77,6 @@
     }
   };
 
-  // Heartbeat on/off
   $('startHb').onclick = ()=>{
     if(!device.id){ say('Aktivoi lippu ensin.'); return; }
     if(hbTimer){ say('Heartbeat on jo käynnissä.'); return; }
@@ -94,9 +89,7 @@
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ deviceId: device.id, lat, lon, accuracy })
-      })
-      .then(()=>{ /* ok */ })
-      .catch(()=>{ /* hiljaa */ });
+      }).catch(()=>{});
     };
     const get = ()=> navigator.geolocation.getCurrentPosition(
       send, ()=>{}, { enableHighAccuracy:true, maximumAge:0, timeout:10000 }
@@ -110,6 +103,5 @@
     else say('Heartbeat ei ollut käynnissä.');
   };
 
-  // Jos deviceId oli tallessa, kerrotaan käyttäjälle että voi suoraan käynnistää GPS:n
   if (device.id) say('Laite muistissa — voit käynnistää GPS heartbeatin heti.');
 })();
