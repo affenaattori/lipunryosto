@@ -17,19 +17,21 @@
     .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
     .small{font-size:12px;color:var(--muted)}
     .score-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1f2937}
+    .err{color:#fca5a5}
   </style>
 </head>
 <body>
   <div class="bar">
     <span class="pill">Public</span>
     <span id="info" class="pill">–</span>
+    <span id="err" class="pill err" style="display:none"></span>
   </div>
   <div class="wrap">
     <div id="map"></div>
     <div class="grid">
       <div class="card">
         <h3>Kuvaus</h3>
-        <div class="small">Kartalla näkyvät aktiiviset lippupisteet. Värit vastaavat omistavaa joukkuetta (jos omistaja on). Päivittyy ~5 s välein.</div>
+        <div class="small">Kartalla näkyvät aktiiviset lippupisteet. Päivittyy ~5 s välein.</div>
       </div>
       <div class="card">
         <h3>Pisteet</h3>
@@ -37,7 +39,6 @@
       </div>
     </div>
   </div>
-
-<script src="./public.js"></script>
+  <script src="./public.js"></script>
 </body>
 </html>
